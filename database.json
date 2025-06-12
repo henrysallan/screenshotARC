@@ -1,3 +1,13 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "2024-01-15-143022",
+      "timestamp": "2024-01-15T14:30:22Z",
+      "title": "Meeting Notes Screenshot",
+      "summary": "Key decisions from product planning meeting",
+      "content": "• Launch date set for March 15\n• Budget approved for $50k\n• Team expansion approved",
+      "tags": ["meeting", "product", "planning"],
+      "extracted_text": "Original OCR text here..."
+    }
+  ]
 }
