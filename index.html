@@ -222,9 +222,9 @@
 
     <script>
         // Configuration
-        const GITHUB_USERNAME = 'henrysallan'; // Replace with your GitHub username
-        const GITHUB_REPO = 'screenshotARC'; // Repository name
-        const DATABASE_FILE = 'database.json'; // JSON file in the repo
+        const GITHUB_USERNAME = 'YOUR_GITHUB_USERNAME'; // Replace with your GitHub username
+        const GITHUB_REPO = 'screenshot-archive'; // Repository name
+        const DATA_FOLDER = 'data'; // Folder containing JSON files
         
         let allEntries = [];
         let filteredEntries = [];
@@ -241,19 +241,42 @@
             }
         }
 
-        // Load the database from GitHub
+        // Load all JSON files from GitHub
         async function loadDatabase() {
-            const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/${DATABASE_FILE}`;
+            // First, get the list of files in the data folder
+            const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${DATA_FOLDER}`;
             
             try {
-                const response = await fetch(url);
+                const response = await fetch(apiUrl);
                 
                 if (!response.ok) {
-                    throw new Error('Database not found');
+                    throw new Error('Could not access repository');
                 }
                 
-                const data = await response.json();
-                allEntries = data.entries || [];
+                const files = await response.json();
+                
+                // Filter for JSON files only
+                const jsonFiles = files.filter(file => file.name.endsWith('.json'));
+                
+                // Load each JSON file
+                const loadPromises = jsonFiles.map(async (file) => {
+                    try {
+                        const fileResponse = await fetch(file.download_url);
+                        if (fileResponse.ok) {
+                            const data = await fileResponse.json();
+                            return data;
+                        }
+                    } catch (error) {
+                        console.error(`Error loading ${file.name}:`, error);
+                        return null;
+                    }
+                });
+                
+                // Wait for all files to load
+                const entries = await Promise.all(loadPromises);
+                
+                // Filter out any failed loads and store
+                allEntries = entries.filter(entry => entry !== null);
                 filteredEntries = [...allEntries];
                 
                 // Sort by date, newest first
@@ -262,7 +285,7 @@
                 
             } catch (error) {
                 console.error('Database load error:', error);
-                // Initialize with empty array if file doesn't exist
+                // Initialize with empty array if folder doesn't exist
                 allEntries = [];
                 filteredEntries = [];
             }
