@@ -142,19 +142,23 @@
             color: #0071e3;
         }
 
-        .calendar-link {
+        .calendar-link, .address-link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background-color: #0071e3;
-            color: white;
             padding: 10px 16px;
             border-radius: 8px;
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
+            margin-right: 12px;
             margin-bottom: 12px;
             transition: background-color 0.2s;
+        }
+
+        .calendar-link {
+            background-color: #0071e3;
+            color: white;
         }
 
         .calendar-link:hover {
@@ -164,6 +168,26 @@
         .calendar-link::before {
             content: "📅";
             font-size: 16px;
+        }
+
+        .address-link {
+            background-color: #34c759;
+            color: white;
+        }
+
+        .address-link:hover {
+            background-color: #28a745;
+        }
+
+        .address-link::before {
+            content: "📍";
+            font-size: 16px;
+        }
+
+        .action-links {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
         }
 
         .tags {
@@ -376,10 +400,19 @@
                         <time class="entry-date">${formatDate(entry.timestamp)}</time>
                     </div>
                     ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
-                    ${entry.calendar_link && entry.calendar_link !== "" ? `
-                        <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
-                            Add to Calendar
-                        </a>
+                    ${(entry.calendar_link && entry.calendar_link !== "") || (entry.address && entry.address !== "") ? `
+                        <div class="action-links">
+                            ${entry.calendar_link && entry.calendar_link !== "" ? `
+                                <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
+                                    Add to Calendar
+                                </a>
+                            ` : ''}
+                            ${entry.address && entry.address !== "" ? `
+                                <a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">
+                                    View on Maps
+                                </a>
+                            ` : ''}
+                        </div>
                     ` : ''}
                     ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
                     ${entry.tags && entry.tags.length > 0 ? `
@@ -391,6 +424,14 @@
                     ` : ''}
                 </div>
             `).join('');
+        }
+
+        // Generate Google Maps link from address
+        function generateMapsLink(address) {
+            // Clean and encode the address for URL
+            const cleanAddress = address.trim();
+            const encodedAddress = encodeURIComponent(cleanAddress);
+            return `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
         }
 
         // Format content (handle bullet points)
