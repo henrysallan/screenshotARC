@@ -133,16 +133,21 @@
             }
 
             .feed {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                gap: 20px;
-                align-items: start;
+                column-count: 2;
+                column-gap: 20px;
+                display: block;
             }
         }
 
-        @media (min-width: 1200px) {
+        @media (min-width: 1024px) {
             .feed {
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                column-count: 3;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .feed {
+                column-count: 4;
             }
         }
 
@@ -153,6 +158,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             transition: transform 0.2s, box-shadow 0.2s;
             break-inside: avoid;
+            margin-bottom: 20px;
         }
 
         .entry:hover {
@@ -450,23 +456,6 @@
             renderEntries();
         }
 
-        // Apply masonry layout on desktop
-        function applyMasonryLayout() {
-            if (window.innerWidth < 768) return; // Skip on mobile
-            
-            const feed = document.getElementById('feed');
-            const entries = feed.querySelectorAll('.entry');
-            
-            // For CSS Grid masonry effect, we need to set row spans based on content height
-            setTimeout(() => {
-                entries.forEach(entry => {
-                    const height = entry.getBoundingClientRect().height;
-                    const rowSpan = Math.ceil(height / 10);
-                    entry.style.gridRowEnd = `span ${rowSpan}`;
-                });
-            }, 100);
-        }
-
         // Search by tag
         function searchByTag(tag) {
             document.getElementById('searchInput').value = tag;
@@ -517,9 +506,6 @@
                     ` : ''}
                 </div>
             `).join('');
-            
-            // Apply masonry layout after rendering
-            applyMasonryLayout();
         }
 
         // Generate Google Maps link from address
@@ -605,15 +591,6 @@
 
         // Start the app
         init();
-        
-        // Reapply masonry on window resize
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                applyMasonryLayout();
-            }, 250);
-        });
         
         // Refresh every 30 seconds to catch new entries
         setInterval(() => {
