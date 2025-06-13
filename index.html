@@ -136,7 +136,11 @@
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 gap: 20px;
-                grid-auto-rows: 20px;
+                grid-auto-rows: 10px;
+            }
+            
+            .entry {
+                margin-bottom: 0;
             }
         }
 
@@ -508,14 +512,25 @@
             const feed = document.getElementById('feed');
             const entries = feed.querySelectorAll('.entry');
             
-            // Calculate row spans for masonry effect
-            requestAnimationFrame(() => {
+            // Wait for content to fully render
+            setTimeout(() => {
                 entries.forEach(entry => {
+                    // Reset any previous styling
+                    entry.style.gridRowEnd = '';
+                    
+                    // Force layout recalculation
+                    entry.offsetHeight;
+                    
+                    // Get the actual height including margins
                     const height = entry.getBoundingClientRect().height;
-                    const rowSpan = Math.ceil((height + 20) / 20); // 20px is our grid row height
+                    const gap = 20; // Match the gap in CSS
+                    const rowHeight = 10; // Match grid-auto-rows
+                    
+                    // Calculate how many rows this card needs
+                    const rowSpan = Math.ceil((height + gap) / rowHeight);
                     entry.style.gridRowEnd = `span ${rowSpan}`;
                 });
-            });
+            }, 100);
         }
 
         // Search by tag
