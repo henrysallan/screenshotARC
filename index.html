@@ -159,6 +159,37 @@
             transition: transform 0.2s, box-shadow 0.2s;
             break-inside: avoid;
             margin-bottom: 20px;
+            /* Animation properties */
+            opacity: 0;
+            transform: translateX(-30px);
+            filter: blur(10px);
+            animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Stagger the animation for each card */
+        .entry:nth-child(1) { animation-delay: 0ms; }
+        .entry:nth-child(2) { animation-delay: 50ms; }
+        .entry:nth-child(3) { animation-delay: 100ms; }
+        .entry:nth-child(4) { animation-delay: 150ms; }
+        .entry:nth-child(5) { animation-delay: 200ms; }
+        .entry:nth-child(6) { animation-delay: 250ms; }
+        .entry:nth-child(7) { animation-delay: 300ms; }
+        .entry:nth-child(8) { animation-delay: 350ms; }
+        .entry:nth-child(9) { animation-delay: 400ms; }
+        .entry:nth-child(10) { animation-delay: 450ms; }
+        .entry:nth-child(n+11) { animation-delay: 500ms; }
+
+        @keyframes slideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-30px);
+                filter: blur(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+                filter: blur(0);
+            }
         }
 
         .entry:hover {
@@ -312,6 +343,15 @@
             border-radius: 12px;
             text-align: center;
             margin-bottom: 20px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .entry {
+                animation: none;
+                opacity: 1;
+                transform: none;
+                filter: none;
+            }
         }
 
         @media (max-width: 600px) {
