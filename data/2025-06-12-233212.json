@@ -1,0 +1,15 @@
+{
+  "id": "Jun 12, 2025 at 11:32 PM",
+  "timestamp": "2025-06-12T23:32:05-04:00",
+  "title": "Combine Custom Bracket Text with Tags",
+  "summary": "Workflow that combines custom bracket text with tags and metadata", 
+  "content": "• Combines custom text with bracketed content
+• Sets UpdatedTags variable with combined result
+• Shows result in Quick Look
+• Includes timestamp and ID metadata
+• Formats with title, summary and content fields",
+  "tags": automation
+text
+formatting
+metadata,
+}
