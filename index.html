@@ -133,26 +133,14 @@
             }
 
             .feed {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 20px;
-                grid-auto-rows: 10px;
+                position: relative;
+                display: block;
             }
             
             .entry {
-                margin-bottom: 0;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .feed {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (min-width: 1400px) {
-            .feed {
-                grid-template-columns: repeat(4, 1fr);
+                margin-bottom: 20px;
+                position: absolute;
+                transition: transform 0.2s, box-shadow 0.2s, top 0.3s, left 0.3s;
             }
         }
 
@@ -505,32 +493,49 @@
             renderEntries();
         }
 
-        // Apply masonry layout for grid
+        // True masonry layout with left-to-right order
         function applyMasonryLayout() {
             if (window.innerWidth < 768) return; // Skip on mobile
             
             const feed = document.getElementById('feed');
-            const entries = feed.querySelectorAll('.entry');
+            const entries = Array.from(feed.querySelectorAll('.entry'));
+            if (entries.length === 0) return;
             
-            // Wait for content to fully render
-            setTimeout(() => {
-                entries.forEach(entry => {
-                    // Reset any previous styling
-                    entry.style.gridRowEnd = '';
-                    
-                    // Force layout recalculation
-                    entry.offsetHeight;
-                    
-                    // Get the actual height including margins
-                    const height = entry.getBoundingClientRect().height;
-                    const gap = 20; // Match the gap in CSS
-                    const rowHeight = 10; // Match grid-auto-rows
-                    
-                    // Calculate how many rows this card needs
-                    const rowSpan = Math.ceil((height + gap) / rowHeight);
-                    entry.style.gridRowEnd = `span ${rowSpan}`;
-                });
-            }, 100);
+            // Determine number of columns based on viewport width
+            let columns = 2;
+            if (window.innerWidth >= 1400) columns = 4;
+            else if (window.innerWidth >= 1024) columns = 3;
+            
+            const gap = 20;
+            const containerWidth = feed.offsetWidth;
+            const columnWidth = (containerWidth - (gap * (columns - 1))) / columns;
+            
+            // Initialize column heights array
+            const columnHeights = new Array(columns).fill(0);
+            
+            // Position each entry
+            entries.forEach((entry, index) => {
+                // Set width first
+                entry.style.width = columnWidth + 'px';
+                
+                // For left-to-right order, calculate which column this should go in
+                const columnIndex = index % columns;
+                
+                // Calculate position
+                const left = columnIndex * (columnWidth + gap);
+                const top = columnHeights[columnIndex];
+                
+                // Apply positioning
+                entry.style.left = left + 'px';
+                entry.style.top = top + 'px';
+                
+                // Update column height for next item in this column
+                columnHeights[columnIndex] = top + entry.offsetHeight + gap;
+            });
+            
+            // Set container height to accommodate all entries
+            const maxHeight = Math.max(...columnHeights);
+            feed.style.height = maxHeight + 'px';
         }
 
         // Search by tag
@@ -585,7 +590,9 @@
             `).join('');
             
             // Apply masonry layout after rendering
-            applyMasonryLayout();
+            setTimeout(() => {
+                applyMasonryLayout();
+            }, 50);
             
             // Mark that we've animated once
             if (!hasAnimated) {
