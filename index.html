@@ -142,11 +142,34 @@
             color: #0071e3;
         }
 
+        .calendar-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #0071e3;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-link:hover {
+            background-color: #005bb5;
+        }
+
+        .calendar-link::before {
+            content: "📅";
+            font-size: 16px;
+        }
+
         .tags {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 12px;
         }
 
         .tag {
@@ -161,20 +184,6 @@
         .tag:hover {
             background-color: #d2d2d7;
             cursor: pointer;
-        }
-
-        .entry-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 12px;
-            border-top: 1px solid #e8e8ed;
-        }
-
-        .entry-id-date {
-            font-size: 12px;
-            color: #86868b;
-            font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
         }
 
         .no-results {
@@ -210,12 +219,6 @@
             
             .entry {
                 padding: 15px;
-            }
-            
-            .entry-footer {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
             }
         }
     </style>
@@ -312,44 +315,6 @@
             }
         }
 
-        // Parse ID to date
-        function parseIdToDate(id) {
-            if (!id || id.length < 14) return null;
-            
-            // ID format: YYYYMMDDHHMMSS
-            const year = id.substring(0, 4);
-            const month = id.substring(4, 6);
-            const day = id.substring(6, 8);
-            const hour = id.substring(8, 10);
-            const minute = id.substring(10, 12);
-            const second = id.substring(12, 14);
-            
-            // Create date object
-            const date = new Date(year, month - 1, day, hour, minute, second);
-            
-            // Check if date is valid
-            if (isNaN(date.getTime())) return null;
-            
-            return date;
-        }
-
-        // Format ID date for display
-        function formatIdDate(id) {
-            const date = parseIdToDate(id);
-            if (!date) return id; // Return original ID if parsing fails
-            
-            // Format as readable date/time
-            return date.toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-        }
-
         // Setup search functionality
         function setupSearch() {
             const searchInput = document.getElementById('searchInput');
@@ -371,16 +336,11 @@
                 filteredEntries = [...allEntries];
             } else {
                 filteredEntries = allEntries.filter(entry => {
-                    // Include the formatted ID date in searchable text
-                    const idDateText = formatIdDate(entry.id).toLowerCase();
-                    
                     const searchableText = [
                         entry.title,
                         entry.summary,
                         entry.content,
-                        ...(entry.tags || []),
-                        entry.id, // Include raw ID
-                        idDateText // Include formatted date
+                        ...(entry.tags || [])
                     ].join(' ').toLowerCase();
                     
                     return searchableText.includes(query);
@@ -416,6 +376,11 @@
                         <time class="entry-date">${formatDate(entry.timestamp)}</time>
                     </div>
                     ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                    ${entry.calendar_link && entry.calendar_link !== "" ? `
+                        <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
+                            Add to Calendar
+                        </a>
+                    ` : ''}
                     ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
                     ${entry.tags && entry.tags.length > 0 ? `
                         <div class="tags">
@@ -424,11 +389,6 @@
                             `).join('')}
                         </div>
                     ` : ''}
-                    <div class="entry-footer">
-                        <div class="entry-id-date">
-                            <span style="color: #c7c7cc;">ID:</span> ${entry.id} • ${formatIdDate(entry.id)}
-                        </div>
-                    </div>
                 </div>
             `).join('');
         }
