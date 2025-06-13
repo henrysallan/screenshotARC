@@ -133,21 +133,22 @@
             }
 
             .feed {
-                column-count: 2;
-                column-gap: 20px;
-                display: block;
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                grid-auto-rows: 20px;
             }
         }
 
         @media (min-width: 1024px) {
             .feed {
-                column-count: 3;
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
         @media (min-width: 1400px) {
             .feed {
-                column-count: 4;
+                grid-template-columns: repeat(4, 1fr);
             }
         }
 
@@ -159,7 +160,10 @@
             transition: transform 0.2s, box-shadow 0.2s;
             break-inside: avoid;
             margin-bottom: 20px;
-            /* Animation properties */
+        }
+
+        /* Animation only on initial load */
+        .entry.animate-in {
             opacity: 0;
             transform: translateX(-30px);
             filter: blur(10px);
@@ -167,17 +171,17 @@
         }
 
         /* Stagger the animation for each card */
-        .entry:nth-child(1) { animation-delay: 0ms; }
-        .entry:nth-child(2) { animation-delay: 50ms; }
-        .entry:nth-child(3) { animation-delay: 100ms; }
-        .entry:nth-child(4) { animation-delay: 150ms; }
-        .entry:nth-child(5) { animation-delay: 200ms; }
-        .entry:nth-child(6) { animation-delay: 250ms; }
-        .entry:nth-child(7) { animation-delay: 300ms; }
-        .entry:nth-child(8) { animation-delay: 350ms; }
-        .entry:nth-child(9) { animation-delay: 400ms; }
-        .entry:nth-child(10) { animation-delay: 450ms; }
-        .entry:nth-child(n+11) { animation-delay: 500ms; }
+        .entry.animate-in:nth-child(1) { animation-delay: 0ms; }
+        .entry.animate-in:nth-child(2) { animation-delay: 50ms; }
+        .entry.animate-in:nth-child(3) { animation-delay: 100ms; }
+        .entry.animate-in:nth-child(4) { animation-delay: 150ms; }
+        .entry.animate-in:nth-child(5) { animation-delay: 200ms; }
+        .entry.animate-in:nth-child(6) { animation-delay: 250ms; }
+        .entry.animate-in:nth-child(7) { animation-delay: 300ms; }
+        .entry.animate-in:nth-child(8) { animation-delay: 350ms; }
+        .entry.animate-in:nth-child(9) { animation-delay: 400ms; }
+        .entry.animate-in:nth-child(10) { animation-delay: 450ms; }
+        .entry.animate-in:nth-child(n+11) { animation-delay: 500ms; }
 
         @keyframes slideIn {
             0% {
@@ -346,7 +350,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .entry {
+            .entry.animate-in {
                 animation: none;
                 opacity: 1;
                 transform: none;
@@ -398,6 +402,7 @@
         
         let allEntries = [];
         let filteredEntries = [];
+        let hasAnimated = false; // Track if we've animated already
 
         // Initialize the app
         async function init() {
@@ -496,6 +501,23 @@
             renderEntries();
         }
 
+        // Apply masonry layout for grid
+        function applyMasonryLayout() {
+            if (window.innerWidth < 768) return; // Skip on mobile
+            
+            const feed = document.getElementById('feed');
+            const entries = feed.querySelectorAll('.entry');
+            
+            // Calculate row spans for masonry effect
+            requestAnimationFrame(() => {
+                entries.forEach(entry => {
+                    const height = entry.getBoundingClientRect().height;
+                    const rowSpan = Math.ceil((height + 20) / 20); // 20px is our grid row height
+                    entry.style.gridRowEnd = `span ${rowSpan}`;
+                });
+            });
+        }
+
         // Search by tag
         function searchByTag(tag) {
             document.getElementById('searchInput').value = tag;
@@ -516,7 +538,7 @@
             }
             
             feed.innerHTML = filteredEntries.map(entry => `
-                <div class="entry">
+                <div class="entry${!hasAnimated ? ' animate-in' : ''}">
                     <div class="entry-header">
                         <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
                         <time class="entry-date">${formatDate(entry.timestamp)}</time>
@@ -546,6 +568,14 @@
                     ` : ''}
                 </div>
             `).join('');
+            
+            // Apply masonry layout after rendering
+            applyMasonryLayout();
+            
+            // Mark that we've animated once
+            if (!hasAnimated) {
+                hasAnimated = true;
+            }
         }
 
         // Generate Google Maps link from address
@@ -632,12 +662,17 @@
         // Start the app
         init();
         
-        // Refresh every 30 seconds to catch new entries
-        setInterval(() => {
-            loadDatabase().then(() => {
-                performSearch(document.getElementById('searchInput').value);
-            });
-        }, 30000);
+        // Reapply masonry on window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                applyMasonryLayout();
+            }, 250);
+        });
+        
+        // Remove automatic refresh - only update on manual page refresh
+        // This prevents the animation from replaying
     </script>
 </body>
 </html>
