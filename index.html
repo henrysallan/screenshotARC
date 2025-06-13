@@ -68,6 +68,23 @@
             margin: 0 auto;
         }
 
+        /* Desktop layout adjustments */
+        @media (min-width: 768px) {
+            header {
+                text-align: left;
+                margin-bottom: 30px;
+            }
+
+            h1 {
+                margin-bottom: 15px;
+            }
+
+            .search-container {
+                margin: 0;
+                max-width: 400px;
+            }
+        }
+
         .search-bar {
             width: 100%;
             padding: 15px 20px;
@@ -104,12 +121,38 @@
             gap: 20px;
         }
 
+        /* Desktop masonry layout */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 1400px;
+            }
+
+            .stats {
+                text-align: left;
+                margin-bottom: 20px;
+            }
+
+            .feed {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 20px;
+                align-items: start;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .feed {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            }
+        }
+
         .entry {
             background-color: white;
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             transition: transform 0.2s, box-shadow 0.2s;
+            break-inside: avoid;
         }
 
         .entry:hover {
@@ -407,6 +450,23 @@
             renderEntries();
         }
 
+        // Apply masonry layout on desktop
+        function applyMasonryLayout() {
+            if (window.innerWidth < 768) return; // Skip on mobile
+            
+            const feed = document.getElementById('feed');
+            const entries = feed.querySelectorAll('.entry');
+            
+            // For CSS Grid masonry effect, we need to set row spans based on content height
+            setTimeout(() => {
+                entries.forEach(entry => {
+                    const height = entry.getBoundingClientRect().height;
+                    const rowSpan = Math.ceil(height / 10);
+                    entry.style.gridRowEnd = `span ${rowSpan}`;
+                });
+            }, 100);
+        }
+
         // Search by tag
         function searchByTag(tag) {
             document.getElementById('searchInput').value = tag;
@@ -457,6 +517,9 @@
                     ` : ''}
                 </div>
             `).join('');
+            
+            // Apply masonry layout after rendering
+            applyMasonryLayout();
         }
 
         // Generate Google Maps link from address
@@ -542,6 +605,15 @@
 
         // Start the app
         init();
+        
+        // Reapply masonry on window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                applyMasonryLayout();
+            }, 250);
+        });
         
         // Refresh every 30 seconds to catch new entries
         setInterval(() => {
