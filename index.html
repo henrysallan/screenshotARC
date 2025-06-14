@@ -545,7 +545,6 @@
         </div>
     </div>
 
-    <!-- Confirmation Dialog -->
     <div class="confirmation-dialog" id="confirmationDialog">
         <div class="confirmation-content">
             <h3 class="confirmation-title">Delete Screenshot?</h3>
@@ -557,7 +556,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
@@ -953,3 +951,72 @@
                         </div>
                     </div>
                 `;
+            }).join('');
+            
+            // Apply masonry layout after rendering
+            setTimeout(applyMasonryLayout, 0);
+            
+            // Ensure animation only runs once on initial load
+            if (!hasAnimated) {
+                hasAnimated = true;
+            }
+        }
+
+        // Helper functions
+        function formatDate(timestamp) {
+            if (!timestamp) return 'No date';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function formatContent(content) {
+            // Check if the content is already in an HTML list format
+            if (content.trim().startsWith('<ul>') && content.trim().endsWith('</ul>')) {
+                return content;
+            }
+            
+            // Otherwise, assume it's a list of items separated by newlines
+            const items = content.split('\n').filter(item => item.trim() !== '');
+            if (items.length > 1) {
+                return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+            }
+            return escapeHtml(content);
+        }
+
+        function generateMapsLink(address) {
+            return `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+        }
+
+        function escapeHtml(str) {
+            const p = document.createElement('p');
+            p.textContent = str;
+            return p.innerHTML;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Hide the error after 5 seconds
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Debounce resize events for masonry recalculation
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(applyMasonryLayout, 300);
+        });
+
+        // Run the app
+        init();
+    </script>
+</body>
+</html>
