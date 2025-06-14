@@ -22,6 +22,7 @@ async function init() {
     try {
         await loadDatabase();
         setupSearch();
+        setupEventListeners(); // <-- ADD THIS LINE
         renderEntries();
         setupRealtimeUpdates();
     } catch (error) {
@@ -111,6 +112,19 @@ function setupSearch() {
             performSearch(e.target.value);
         }, 300);
     });
+}
+
+function setupEventListeners() {
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', confirmDelete);
+    }
+
+    if (confirmCancelBtn) {
+        confirmCancelBtn.addEventListener('click', cancelDelete);
+    }
 }
 
 // Perform search
