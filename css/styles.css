@@ -1,6 +1,6 @@
 /* =================================================================
-// STYLES.CSS - FINAL VERSION 2
-// This version supports both desktop masonry and mobile swipe.
+// STYLES.CSS - FINAL VERSION 2.0
+// This version includes fixes for mobile delete text and layout.
 // ================================================================= */
 @font-face {
     font-family: 'LibreBaskerville';
@@ -46,22 +46,22 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
 .entry { background-color: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); transition: transform 0.2s, box-shadow 0.2s; position: relative; }
 .entry:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); }
 
-.delete-background { display: none; } /* Hidden by default, enabled via JS for mobile */
-.delete-icon { display: none; } /* Hidden by default, enabled for desktop */
+.delete-background { position: absolute; top: 0; right: 0; bottom: 0; width: 80px; background-color: #ff3b30; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 14px; cursor: pointer; opacity: 0; transition: opacity 0.3s; }
+.delete-background.visible { opacity: 1; }
+.delete-icon { display: none; }
 
-/* --- Mobile-Specific Styles (max-width: 767px) --- */
+/* --- Mobile-Specific Styles --- */
 @media (max-width: 767px) {
     .entry-swipe-container { touch-action: pan-y; }
-    .delete-background { position: absolute; top: 0; right: 0; bottom: 0; width: 80px; background-color: #ff3b30; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 14px; cursor: pointer; opacity: 0; transition: opacity 0.3s; }
-    .delete-background.visible { opacity: 1; }
 }
 
-/* --- Desktop-Specific Styles (min-width: 768px) --- */
+/* --- Desktop-Specific Styles --- */
 @media (min-width: 768px) {
     .container { max-width: 1400px; }
     .stats { text-align: left; margin-bottom: 20px; }
     .feed { position: relative; display: block; gap: 0; }
     .entry-wrapper { margin-bottom: 20px; position: absolute; overflow: visible; transition: top 0.3s, left 0.3s; }
+    .delete-background { display: none; }
     .delete-icon { display: flex; position: absolute; bottom: 15px; right: 15px; width: 32px; height: 32px; background-color: #ff3b30; color: white; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; box-shadow: 0 2px 6px rgba(0,0,0,0.15); opacity: 0; transform: scale(0.8); transition: opacity 0.2s, transform 0.2s; z-index: 10; }
     .entry:hover .delete-icon { opacity: 1; transform: scale(1); }
     .delete-icon:hover { background-color: #e60000; transform: scale(1.1); }
