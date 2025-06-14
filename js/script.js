@@ -32,6 +32,8 @@ async function init() {
 }
 
 // Load all entries from Firebase
+// IN SCRIPT.JS - REPLACE THE OLD loadDatabase FUNCTION WITH THIS
+
 async function loadDatabase() {
     try {
         const snapshot = await db.collection('entries')
@@ -40,20 +42,18 @@ async function loadDatabase() {
 
         allEntries = snapshot.docs.map(doc => {
             const data = doc.data();
-
-            // This logic handles both nested and flat data structures consistently.
             const entryData = (data.data && typeof data.data === 'string') ? JSON.parse(data.data) : data;
-            
-            // This ensures firebaseTimestamp is always created from the top-level field.
             const timestamp = data.timestamp || data.createdAt;
 
+            // THE FIX IS HERE: We move `id: doc.id` to the end to ensure
+            // it can never be overwritten by a field in the document.
             return {
-                id: doc.id,          // The document's unique ID
-                ...entryData,        // The actual content (title, summary, etc.)
-                firebaseTimestamp: timestamp // The consistent timestamp property
+                ...entryData,
+                firebaseTimestamp: timestamp,
+                id: doc.id // The REAL document ID is now the last property assigned.
             };
 
-        }).filter(entry => entry !== null && entry.id); // Also ensure entry and id exist
+        }).filter(entry => entry && entry.id);
 
         filteredEntries = [...allEntries];
 
