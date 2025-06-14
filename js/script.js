@@ -16,7 +16,7 @@ let allEntries = [];
 let filteredEntries = [];
 let hasAnimated = false;
 let entryToDelete = null;
-let activeSwipeElement = null; // Variable for tracking active swipe
+let activeSwipeElement = null;
 
 // Initialize the app
 async function init() {
@@ -24,7 +24,7 @@ async function init() {
         await loadDatabase();
         setupSearch();
         setupEventListeners();
-        setupSwipeGestures(); // <-- Re-added swipe setup
+        setupSwipeGestures();
         renderEntries();
         setupRealtimeUpdates();
     } catch (error) {
@@ -45,26 +45,19 @@ function setupEventListeners() {
     }
 }
 
-// --- ADD THIS ENTIRE FUNCTION BACK ---
 // Setup swipe gestures for mobile
 function setupSwipeGestures() {
-    let startX = 0;
-    let currentX = 0;
-    let isSwiping = false;
-    let cardElement = null;
-    let deleteBackground = null;
+    let startX = 0, currentX = 0, isSwiping = false, cardElement = null, deleteBackground = null;
 
     document.getElementById('feed').addEventListener('touchstart', (e) => {
         const swipeContainer = e.target.closest('.entry-swipe-container');
         if (!swipeContainer || window.innerWidth > 767) return;
 
-        // Reset any other swiped cards
         if (activeSwipeElement && activeSwipeElement !== swipeContainer) {
             activeSwipeElement.style.transform = 'translateX(0)';
             const oldDeleteBg = activeSwipeElement.parentElement.querySelector('.delete-background');
             if (oldDeleteBg) oldDeleteBg.classList.remove('visible');
         }
-
         cardElement = swipeContainer;
         deleteBackground = cardElement.parentElement.querySelector('.delete-background');
         startX = e.touches[0].pageX;
@@ -73,40 +66,29 @@ function setupSwipeGestures() {
 
     document.getElementById('feed').addEventListener('touchmove', (e) => {
         if (!isSwiping || !cardElement) return;
-
         currentX = e.touches[0].pageX;
         const diffX = currentX - startX;
-
-        // Only allow left swipe
         if (diffX < 0) {
-            // e.preventDefault(); // This can sometimes interfere with scrolling
-            const translateX = Math.max(diffX, -80); // Limit swipe distance
+            const translateX = Math.max(diffX, -80);
             cardElement.style.transform = `translateX(${translateX}px)`;
-            
-            if (Math.abs(translateX) > 40) {
-                if(deleteBackground) deleteBackground.classList.add('visible');
-            } else {
-                if(deleteBackground) deleteBackground.classList.remove('visible');
+            if (deleteBackground) {
+                deleteBackground.classList.toggle('visible', Math.abs(translateX) > 40);
             }
         }
-    }, { passive: true }); // passive:false if preventDefault is needed
+    }, { passive: true });
 
-    document.getElementById('feed').addEventListener('touchend', (e) => {
+    document.getElementById('feed').addEventListener('touchend', () => {
         if (!isSwiping || !cardElement) return;
-
         const diffX = currentX - startX;
         if (diffX < -40) {
-            // Snap to show delete button
             cardElement.style.transform = 'translateX(-80px)';
-            if(deleteBackground) deleteBackground.classList.add('visible');
+            if (deleteBackground) deleteBackground.classList.add('visible');
             activeSwipeElement = cardElement;
         } else {
-            // Snap back
             cardElement.style.transform = 'translateX(0)';
-            if(deleteBackground) deleteBackground.classList.remove('visible');
+            if (deleteBackground) deleteBackground.classList.remove('visible');
             activeSwipeElement = null;
         }
-
         isSwiping = false;
         cardElement = null;
         deleteBackground = null;
@@ -114,7 +96,6 @@ function setupSwipeGestures() {
         currentX = 0;
     });
 }
-
 
 // Load all entries from Firebase
 async function loadDatabase() {
@@ -124,17 +105,20 @@ async function loadDatabase() {
             const data = doc.data();
             const entryData = (data.data && typeof data.data === 'string') ? JSON.parse(data.data) : data;
             const timestamp = data.timestamp || data.createdAt;
+
+            // ===== THE CORE FIX IS HERE =====
+            // We store the real ID in `docId` to prevent collision with any `id` field in the data.
             return {
                 ...entryData,
                 firebaseTimestamp: timestamp,
-                id: doc.id
+                docId: doc.id 
             };
-        }).filter(entry => entry && entry.id);
+        // We also update the filter to look for the new `docId` property.
+        }).filter(entry => entry && entry.docId);
+
         filteredEntries = [...allEntries];
     } catch (error) {
         console.error("Database load error:", error);
-        allEntries = [];
-        filteredEntries = [];
         showError("Failed to load data from the database.");
     }
 }
@@ -150,7 +134,6 @@ function renderEntries() {
         return;
     }
 
-    // --- RENDERENTRIES IS UPDATED TO USE THE WRAPPER STRUCTURE ---
     feed.innerHTML = filteredEntries.map(entry => {
         let tags = [];
         if (entry.tags) {
@@ -161,12 +144,14 @@ function renderEntries() {
             }
         }
         
+        // ===== THE SECOND FIX IS HERE =====
+        // All calls to requestDelete now use `entry.docId` instead of `entry.id`.
         return `
             <div class="entry-wrapper${!hasAnimated ? ' animate-in' : ''}">
-                <div class="delete-background" onclick="requestDelete('${entry.id}')">Delete</div>
+                <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
                 <div class="entry-swipe-container">
                     <div class="entry">
-                        <div class="delete-icon" onclick="requestDelete('${entry.id}')">×</div>
+                        <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
                         <div class="entry-header">
                             <h2 class="entry-title">${escapeHtml(entry.title || '')}</h2>
                             <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
@@ -197,48 +182,65 @@ function renderEntries() {
     }
 }
 
-// --- MASONRY LAYOUT IS UPDATED TO TARGET THE WRAPPER ---
+// Masonry layout function (targets the wrapper)
 function applyMasonryLayout() {
     if (window.innerWidth < 768) return;
-
     const feed = document.getElementById('feed');
-    const items = Array.from(feed.querySelectorAll('.entry-wrapper')); // <-- TARGETS WRAPPER
+    const items = Array.from(feed.querySelectorAll('.entry-wrapper'));
     if (items.length === 0) return;
-
     let columns = 2;
     if (window.innerWidth >= 1400) columns = 4;
     else if (window.innerWidth >= 1024) columns = 3;
-    
     const gap = 20;
     const containerWidth = feed.offsetWidth;
     const columnWidth = (containerWidth - (gap * (columns - 1))) / columns;
     const columnHeights = new Array(columns).fill(0);
 
-    items.forEach(item => { // <-- USES 'item' instead of 'entry'
-        item.style.width = columnWidth + 'px';
-        
-        let shortestColumnIndex = 0;
-        for (let i = 1; i < columns; i++) {
-            if (columnHeights[i] < columnHeights[shortestColumnIndex]) {
-                shortestColumnIndex = i;
-            }
-        }
-
+    items.forEach(item => {
+        item.style.width = `${columnWidth}px`;
+        let shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
         const left = shortestColumnIndex * (columnWidth + gap);
         const top = columnHeights[shortestColumnIndex];
-
-        item.style.left = left + 'px';
-        item.style.top = top + 'px';
-        
+        item.style.left = `${left}px`;
+        item.style.top = `${top}px`;
         columnHeights[shortestColumnIndex] += item.offsetHeight + gap;
     });
+    feed.style.height = `${Math.max(...columnHeights)}px`;
+}
 
-    const maxHeight = Math.max(...columnHeights);
-    feed.style.height = maxHeight + 'px';
+// Delete functions
+async function confirmDelete() {
+    if (!entryToDelete) return;
+    try {
+        await db.collection('entries').doc(entryToDelete).delete();
+        // Upon successful deletion, remove the entry from the local arrays and re-render.
+        allEntries = allEntries.filter(entry => entry.docId !== entryToDelete);
+        performSearch(document.getElementById('searchInput').value); // Re-run search/filter
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        showError('Failed to delete the screenshot. Please try again.');
+    }
+    cancelDelete();
+}
+
+function requestDelete(docId) {
+    if (activeSwipeElement) {
+        activeSwipeElement.style.transform = 'translateX(0)';
+        const oldDeleteBg = activeSwipeElement.parentElement.querySelector('.delete-background');
+        if (oldDeleteBg) oldDeleteBg.classList.remove('visible');
+        activeSwipeElement = null;
+    }
+    entryToDelete = docId;
+    document.getElementById('confirmationDialog').classList.add('show');
+}
+
+function cancelDelete() {
+    entryToDelete = null;
+    document.getElementById('confirmationDialog').classList.remove('show');
 }
 
 
-// --- Other functions (no changes needed below) ---
+// Other functions (no changes needed below)
 function setupSearch() {
     const searchInput = document.getElementById('searchInput');
     let searchTimeout;
@@ -251,8 +253,8 @@ function setupSearch() {
 }
 
 function performSearch(query) {
-    query = query.toLowerCase().trim();
-    if (!query) {
+    const lowerCaseQuery = query.toLowerCase().trim();
+    if (!lowerCaseQuery) {
         filteredEntries = [...allEntries];
     } else {
         filteredEntries = allEntries.filter(entry => {
@@ -265,41 +267,10 @@ function performSearch(query) {
                 }
             }
             const searchableText = [entry.title || '', entry.summary || '', entry.content || '', ...tags].join(' ').toLowerCase();
-            return searchableText.includes(query);
+            return searchableText.includes(lowerCaseQuery);
         });
     }
     renderEntries();
-}
-
-function requestDelete(entryId) {
-    // If a card is swiped open, close it before showing dialog
-    if (activeSwipeElement) {
-        activeSwipeElement.style.transform = 'translateX(0)';
-        const oldDeleteBg = activeSwipeElement.parentElement.querySelector('.delete-background');
-        if (oldDeleteBg) oldDeleteBg.classList.remove('visible');
-        activeSwipeElement = null;
-    }
-    entryToDelete = entryId;
-    document.getElementById('confirmationDialog').classList.add('show');
-}
-
-function cancelDelete() {
-    entryToDelete = null;
-    document.getElementById('confirmationDialog').classList.remove('show');
-}
-
-async function confirmDelete() {
-    if (!entryToDelete) return;
-    try {
-        await db.collection('entries').doc(entryToDelete).delete();
-        // No need to manually filter, just reload for simplicity or filter if preferred
-        await loadDatabase();
-        renderEntries();
-    } catch (error) {
-        console.error('Error deleting entry:', error);
-        showError('Failed to delete the screenshot. Please try again.');
-    }
-    cancelDelete(); // Hide dialog
 }
 
 function searchByTag(tag) {
@@ -346,3 +317,6 @@ window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(applyMasonryLayout, 250);
 });
+
+// Run the app
+init();
