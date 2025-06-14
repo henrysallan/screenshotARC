@@ -1,7 +1,6 @@
 // =================================================================
-// SCRIPT.JS - FINAL UNIFIED VERSION
-// Based on the user's working script, with swipe functionality
-// and the robust `docId` fix merged in.
+// SCRIPT.JS - FINAL VERSION 2.1
+// This version includes fixes for missing elements and resize bug.
 // =================================================================
 
 // --- 1. CONFIGURATION AND GLOBAL STATE ---
@@ -21,8 +20,6 @@ let allEntries = [];
 let filteredEntries = [];
 let entryToDelete = null;
 let activeSwipeElement = null;
-let hasAnimated = false;
-
 
 // --- 2. INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', init);
@@ -30,12 +27,16 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
     try {
         setupStaticEventListeners();
-        await loadDatabase();
-        renderEntries(); // This will also trigger the other setups
+        await loadAndRender();
     } catch (error) {
         showError('Failed to initialize the application.');
         console.error('Initialization error:', error);
     }
+}
+
+async function loadAndRender() {
+    await loadDatabase();
+    renderEntries();
 }
 
 // --- 3. DATA HANDLING (FIREBASE) ---
@@ -71,6 +72,15 @@ function renderEntries() {
 
     feed.innerHTML = filteredEntries.map(entry => {
         const tags = Array.isArray(entry.tags) ? entry.tags : [];
+        
+        // ===== FIX #1: Added back the logic for calendar and address links =====
+        const actionLinksHTML = (entry.calendar_link || entry.address) ? `
+            <div class="action-links">
+                ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
+                ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
+            </div>
+        ` : '';
+
         return `
             <div class="entry-wrapper">
                 <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
@@ -82,6 +92,8 @@ function renderEntries() {
                             <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
                         </div>
                         ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                        ${actionLinksHTML}
+                        ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
                         <div class="tags">
                             ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
                         </div>
@@ -95,36 +107,42 @@ function renderEntries() {
         applyMasonryLayout();
         setupDynamicEventListeners();
     }, 50);
-
-    if (!hasAnimated) hasAnimated = true;
 }
 
 function applyMasonryLayout() {
     const feed = document.getElementById('feed');
-    if (window.innerWidth < 768) {
-        feed.style.height = 'auto'; // Reset height for mobile view
-        return;
-    }
-
     const items = Array.from(feed.querySelectorAll('.entry-wrapper'));
-    if (items.length === 0) return;
 
-    const columns = window.innerWidth >= 1400 ? 4 : (window.innerWidth >= 1024 ? 3 : 2);
-    const gap = 20;
-    const columnWidth = (feed.offsetWidth - (gap * (columns - 1))) / columns;
-    const columnHeights = Array(columns).fill(0);
+    // ===== FIX #3: Added 'else' block to clear styles on mobile =====
+    if (window.innerWidth >= 768) {
+        // --- Desktop Masonry Logic ---
+        if (items.length === 0) return;
+        const columns = window.innerWidth >= 1400 ? 4 : (window.innerWidth >= 1024 ? 3 : 2);
+        const gap = 20;
+        const columnWidth = (feed.offsetWidth - (gap * (columns - 1))) / columns;
+        const columnHeights = Array(columns).fill(0);
 
-    items.forEach(item => {
-        item.style.width = `${columnWidth}px`;
-        const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
-        const left = shortestColumnIndex * (columnWidth + gap);
-        const top = columnHeights[shortestColumnIndex];
-        item.style.left = `${left}px`;
-        item.style.top = `${top}px`;
-        columnHeights[shortestColumnIndex] += item.offsetHeight + gap;
-    });
-
-    feed.style.height = `${Math.max(...columnHeights)}px`;
+        items.forEach(item => {
+            item.style.position = 'absolute'; // Ensure position is set
+            item.style.width = `${columnWidth}px`;
+            const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+            const left = shortestColumnIndex * (columnWidth + gap);
+            const top = columnHeights[shortestColumnIndex];
+            item.style.left = `${left}px`;
+            item.style.top = `${top}px`;
+            columnHeights[shortestColumnIndex] += item.offsetHeight + gap;
+        });
+        feed.style.height = `${Math.max(...columnHeights)}px`;
+    } else {
+        // --- Mobile Logic: Clear inline styles ---
+        feed.style.height = 'auto';
+        items.forEach(item => {
+            item.style.position = '';
+            item.style.left = '';
+            item.style.top = '';
+            item.style.width = '';
+        });
+    }
 }
 
 
@@ -202,10 +220,10 @@ async function confirmDelete() {
     if (!entryToDelete) return;
     try {
         await db.collection('entries').doc(entryToDelete).delete();
-        allEntries = allEntries.filter(entry => entry.docId !== entryToDelete);
-        performSearch(document.getElementById('searchInput').value);
+        await loadAndRender(); // Easiest way to ensure UI is in sync
     } catch (error) {
         showError('Failed to delete the screenshot.');
+        console.error("Delete error:", error);
     }
     cancelDelete();
 }
@@ -231,6 +249,19 @@ function formatDate(timestamp) {
     if (!timestamp) return 'No date';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function formatContent(content) {
+    if (typeof content !== 'string' || !content.trim()) return '';
+    const items = content.split(',').map(item => item.trim()).filter(item => item);
+    if (items.length > 0) {
+        return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+    }
+    return `<p>${escapeHtml(content)}</p>`;
+}
+
+function generateMapsLink(address) {
+    return `https://maps.google.com/?q=${encodeURIComponent(address.trim())}`;
 }
 
 function escapeHtml(str = '') {
