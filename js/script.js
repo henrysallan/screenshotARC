@@ -17,6 +17,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let allEntries = [];
+let currentView = 'masonry'; // Track current view
 let filteredEntries = [];
 let entryToDelete = null;
 let activeSwipeElement = null;
@@ -70,60 +71,119 @@ function renderEntries() {
         return;
     }
 
-    feed.innerHTML = filteredEntries.map(entry => {
-        // Parse tags properly from different formats and clean single quotes
-        let tags = [];
-        if (entry.tags) {
-            if (typeof entry.tags === 'string') {
-                // Handle string format like "[tag1, tag2, tag3]" or "tag1, tag2, tag3"
-                // Also remove single quotes around individual tags
-                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
-            } else if (Array.isArray(entry.tags)) {
-                // Clean single quotes from array items too
-                tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
+    if (currentView === 'database') {
+        // Database view rendering
+        feed.innerHTML = filteredEntries.map(entry => {
+            // Parse tags properly from different formats and clean single quotes
+            let tags = [];
+            if (entry.tags) {
+                if (typeof entry.tags === 'string') {
+                    tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
+                } else if (Array.isArray(entry.tags)) {
+                    tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
+                }
             }
-        }
-        
-        // Create action links HTML including product link
-        const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
-            <div class="action-links">
-                ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
-                ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
-                ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
-            </div>
-        ` : '';
-
-        return `
-            <div class="entry-wrapper">
-                <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
-                <div class="entry-swipe-container">
-                    <div class="entry">
-                        <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
-                        <div class="entry-header">
-                            <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
-                            <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
+            
+            // Create action links HTML including product link
+            const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
+                <div class="action-links">
+                    ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
+                    ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
+                    ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
+                </div>
+            ` : '';
+            
+            return `
+                <div class="entry-wrapper" data-entry-id="${entry.docId}">
+                    <div class="database-row" onclick="toggleDatabaseRow('${entry.docId}')">
+                        <div class="database-row-title">${escapeHtml(entry.title || 'Untitled')}</div>
+                        <div class="database-row-tags">
+                            ${tags.slice(0, 3).map(tag => `
+                                <span class="tag" onclick="event.stopPropagation(); searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>
+                            `).join('')}
+                            ${tags.length > 3 ? `<span class="tag">+${tags.length - 3}</span>` : ''}
                         </div>
-                        ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
-                        ${actionLinksHTML}
-                        ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
-                        ${tags.length > 0 ? `
-                            <div class="tags">
-                                ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
+                        <time class="database-row-date">${formatDate(entry.firebaseTimestamp)}</time>
+                        <span class="database-expand-icon">▼</span>
+                    </div>
+                    <div class="database-content">
+                        <div class="entry">
+                            <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
+                            <div class="entry-header">
+                                <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
+                                <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
                             </div>
-                        ` : ''}
+                            ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                            ${actionLinksHTML}
+                            ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
+                            ${tags.length > 0 ? `
+                                <div class="tags">
+                                    ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    } else {
+        // Masonry view rendering (existing code)
+        feed.innerHTML = filteredEntries.map(entry => {
+            // [Keep the existing masonry view code here - same as in your current renderEntries function]
+            // Parse tags properly from different formats and clean single quotes
+            let tags = [];
+            if (entry.tags) {
+                if (typeof entry.tags === 'string') {
+                    tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
+                } else if (Array.isArray(entry.tags)) {
+                    tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
+                }
+            }
+            
+            // Create action links HTML including product link
+            const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
+                <div class="action-links">
+                    ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
+                    ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
+                    ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
+                </div>
+            ` : '';
+
+            return `
+                <div class="entry-wrapper">
+                    <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
+                    <div class="entry-swipe-container">
+                        <div class="entry">
+                            <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
+                            <div class="entry-header">
+                                <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
+                                <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
+                            </div>
+                            ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                            ${actionLinksHTML}
+                            ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
+                            ${tags.length > 0 ? `
+                                <div class="tags">
+                                    ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
     setTimeout(() => {
-        applyMasonryLayout();
+        if (currentView === 'masonry') {
+            applyMasonryLayout();
+        }
         setupDynamicEventListeners();
     }, 50);
 }
 
 function applyMasonryLayout() {
+    if (currentView !== 'masonry') return;
     const feed = document.getElementById('feed');
     const items = Array.from(feed.querySelectorAll('.entry-wrapper'));
 
@@ -159,11 +219,58 @@ function applyMasonryLayout() {
 }
 
 
+function toggleViewDropdown() {
+    const dropdown = document.getElementById('viewDropdown');
+    dropdown.classList.toggle('show');
+}
+
+function switchView(view) {
+    currentView = view;
+    const dropdown = document.getElementById('viewDropdown');
+    const feed = document.getElementById('feed');
+    const currentIcon = document.getElementById('currentViewIcon');
+    
+    // Update active state
+    document.querySelectorAll('.view-option').forEach(option => {
+        option.classList.toggle('active', option.dataset.view === view);
+    });
+    
+    // Update current icon
+    currentIcon.textContent = view === 'masonry' ? '⊞' : '☰';
+    
+    // Close dropdown
+    dropdown.classList.remove('show');
+    
+    // Update feed class
+    feed.classList.toggle('database-view', view === 'database');
+    
+    // Re-render entries
+    renderEntries();
+}
+
+// Toggle database row expansion
+function toggleDatabaseRow(docId) {
+    if (currentView !== 'database') return;
+    
+    const wrapper = document.querySelector(`[data-entry-id="${docId}"]`);
+    if (wrapper) {
+        wrapper.classList.toggle('expanded');
+    }
+}
+
+window.toggleViewDropdown = toggleViewDropdown;
+window.switchView = switchView;
+window.toggleDatabaseRow = toggleDatabaseRow;
+
 // --- 5. EVENT LISTENERS AND HANDLERS ---
 function setupStaticEventListeners() {
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
     document.getElementById('confirmCancelBtn')?.addEventListener('click', cancelDelete);
-
+    document.addEventListener('click', (e) => {
+    if (!e.target.closest('.view-switcher')) {
+        document.getElementById('viewDropdown').classList.remove('show');
+        }
+    });
     const searchInput = document.getElementById('searchInput');
     let searchTimeout;
     searchInput?.addEventListener('input', (e) => {
