@@ -200,7 +200,7 @@ function cancelDelete() {
 
 async function confirmDelete() {
     if (!entryToDelete) return;
-    
+    console.log("Attempting to delete document with ID:", entryToDelete);
     try {
         await db.collection('entries').doc(entryToDelete).delete();
         
