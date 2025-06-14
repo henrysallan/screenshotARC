@@ -18,15 +18,26 @@
                     id="searchInput"
                 >
             </div>
+            <div class="view-switcher">
+                <button class="view-button" onclick="toggleViewDropdown()" id="viewButton">
+                    <span id="currentViewIcon">⊞</span>
+                </button>
+                <div class="view-dropdown" id="viewDropdown">
+                    <button class="view-option active" onclick="switchView('masonry')" data-view="masonry">
+                        ⊞
+                    </button>
+                    <button class="view-option" onclick="switchView('database')" data-view="database">
+                        ☰
+                    </button>
+                </div>
+            </div>
         </header>
-
         <div class="stats" id="stats">Loading...</div>
         <div class="error" id="error" style="display: none;"></div>
         <div class="feed" id="feed">
             <div class="loading">Loading screenshots...</div>
         </div>
     </div>
-
     <div class="confirmation-dialog" id="confirmationDialog">
         <div class="confirmation-content">
             <h3 class="confirmation-title">Delete Screenshot?</h3>
@@ -37,7 +48,6 @@
             </div>
         </div>
     </div>
-
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
