@@ -64,10 +64,10 @@ async function loadDatabase() {
 function renderEntries() {
     const feed = document.getElementById('feed');
     const stats = document.getElementById('stats');
-    stats.textContent = `${filteredEntries.length} of ${allEntries.length} screenshots`;
+    stats.textContent = `${filteredEntries.length} of ${allEntries.length} shards`;
 
     if (filteredEntries.length === 0) {
-        feed.innerHTML = '<div class="no-results">No screenshots found</div>';
+        feed.innerHTML = '<div class="no-results">No shards found</div>';
         return;
     }
 
