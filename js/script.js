@@ -71,14 +71,16 @@ function renderEntries() {
     }
 
     feed.innerHTML = filteredEntries.map(entry => {
-        // Parse tags properly from different formats
+        // Parse tags properly from different formats and clean single quotes
         let tags = [];
         if (entry.tags) {
             if (typeof entry.tags === 'string') {
                 // Handle string format like "[tag1, tag2, tag3]" or "tag1, tag2, tag3"
-                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
+                // Also remove single quotes around individual tags
+                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
             } else if (Array.isArray(entry.tags)) {
-                tags = entry.tags;
+                // Clean single quotes from array items too
+                tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
             }
         }
         
@@ -242,13 +244,13 @@ async function confirmDelete() {
 function performSearch(query) {
     const lowerCaseQuery = query.toLowerCase().trim();
     filteredEntries = lowerCaseQuery ? allEntries.filter(entry => {
-        // Parse tags properly
+        // Parse tags properly and clean single quotes
         let tags = [];
         if (entry.tags) {
             if (typeof entry.tags === 'string') {
-                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
+                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
             } else if (Array.isArray(entry.tags)) {
-                tags = entry.tags;
+                tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
             }
         }
         
