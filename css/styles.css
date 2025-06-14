@@ -119,25 +119,7 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
 
 
 
-@media (max-width: 600px) {
-    .database-row {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
 
-    .database-row-title {
-        width: 100%;
-        flex: none;
-    }
-
-    .database-row-tags {
-        max-width: 60%;
-    }
-
-    .database-row-date {
-        margin-left: auto;
-    }
-}
 
 /* --- Desktop-Specific Styles --- */
 @media (min-width: 768px) {
