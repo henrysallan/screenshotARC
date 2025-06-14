@@ -137,11 +137,25 @@
                 display: block;
             }
             
-            .entry {
+            .entry-wrapper {
                 margin-bottom: 20px;
                 position: absolute;
                 transition: transform 0.2s, box-shadow 0.2s, top 0.3s, left 0.3s;
             }
+        }
+
+        /* Entry wrapper for swipe functionality */
+        .entry-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .entry-swipe-container {
+            position: relative;
+            transition: transform 0.3s ease;
+            will-change: transform;
         }
 
         .entry {
@@ -151,7 +165,76 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             transition: transform 0.2s, box-shadow 0.2s;
             break-inside: avoid;
-            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* Delete button for mobile swipe */
+        .delete-background {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 80px;
+            background-color: #ff3b30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .delete-background.visible {
+            opacity: 1;
+        }
+
+        /* Desktop delete button */
+        .delete-icon {
+            display: none;
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            background-color: #ff3b30;
+            color: white;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            font-size: 18px;
+            line-height: 1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        @media (min-width: 768px) {
+            .delete-icon {
+                display: flex;
+            }
+            
+            .entry:hover .delete-icon {
+                transform: scale(1.1);
+            }
+            
+            .delete-icon:hover {
+                background-color: #e60000;
+            }
+            
+            /* Hide swipe functionality on desktop */
+            .delete-background {
+                display: none;
+            }
+        }
+
+        /* Only enable swipe on mobile */
+        @media (max-width: 767px) {
+            .entry-wrapper {
+                touch-action: pan-y;
+            }
         }
 
         /* Animation only on initial load */
@@ -163,17 +246,18 @@
         }
 
         /* Stagger the animation for each card */
-        .entry.animate-in:nth-child(1) { animation-delay: 0ms; }
-        .entry.animate-in:nth-child(2) { animation-delay: 50ms; }
-        .entry.animate-in:nth-child(3) { animation-delay: 100ms; }
-        .entry.animate-in:nth-child(4) { animation-delay: 150ms; }
-        .entry.animate-in:nth-child(5) { animation-delay: 200ms; }
-        .entry.animate-in:nth-child(6) { animation-delay: 250ms; }
-        .entry.animate-in:nth-child(7) { animation-delay: 300ms; }
-        .entry.animate-in:nth-child(8) { animation-delay: 350ms; }
-        .entry.animate-in:nth-child(9) { animation-delay: 400ms; }
-        .entry.animate-in:nth-child(10) { animation-delay: 450ms; }
-        .entry.animate-in:nth-child(n+11) { animation-delay: 500ms; }
+        .entry-wrapper.animate-in .entry { animation-delay: 0ms; }
+        .entry-wrapper:nth-child(1) .entry.animate-in { animation-delay: 0ms; }
+        .entry-wrapper:nth-child(2) .entry.animate-in { animation-delay: 50ms; }
+        .entry-wrapper:nth-child(3) .entry.animate-in { animation-delay: 100ms; }
+        .entry-wrapper:nth-child(4) .entry.animate-in { animation-delay: 150ms; }
+        .entry-wrapper:nth-child(5) .entry.animate-in { animation-delay: 200ms; }
+        .entry-wrapper:nth-child(6) .entry.animate-in { animation-delay: 250ms; }
+        .entry-wrapper:nth-child(7) .entry.animate-in { animation-delay: 300ms; }
+        .entry-wrapper:nth-child(8) .entry.animate-in { animation-delay: 350ms; }
+        .entry-wrapper:nth-child(9) .entry.animate-in { animation-delay: 400ms; }
+        .entry-wrapper:nth-child(10) .entry.animate-in { animation-delay: 450ms; }
+        .entry-wrapper:nth-child(n+11) .entry.animate-in { animation-delay: 500ms; }
 
         @keyframes slideIn {
             0% {
@@ -341,6 +425,81 @@
             margin-bottom: 20px;
         }
 
+        /* Confirmation dialog */
+        .confirmation-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .confirmation-dialog.show {
+            display: flex;
+        }
+
+        .confirmation-content {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 320px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .confirmation-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #1d1d1f;
+        }
+
+        .confirmation-message {
+            font-size: 14px;
+            color: #3e3e43;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .confirmation-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .confirmation-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-width: 80px;
+        }
+
+        .confirmation-button:hover {
+            opacity: 0.8;
+        }
+
+        .confirm-cancel {
+            background-color: #e8e8ed;
+            color: #3e3e43;
+        }
+
+        .confirm-delete {
+            background-color: #ff3b30;
+            color: white;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .entry.animate-in {
                 animation: none;
@@ -386,6 +545,18 @@
         </div>
     </div>
 
+    <!-- Confirmation Dialog -->
+    <div class="confirmation-dialog" id="confirmationDialog">
+        <div class="confirmation-content">
+            <h3 class="confirmation-title">Delete Screenshot?</h3>
+            <p class="confirmation-message">Are you sure you want to delete this screenshot? This action cannot be undone.</p>
+            <div class="confirmation-buttons">
+                <button class="confirmation-button confirm-cancel" onclick="cancelDelete()">Cancel</button>
+                <button class="confirmation-button confirm-delete" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -407,7 +578,9 @@
         
         let allEntries = [];
         let filteredEntries = [];
-        let hasAnimated = false; // Track if we've animated already
+        let hasAnimated = false;
+        let entryToDelete = null;
+        let activeSwipeElement = null;
 
         // Initialize the app
         async function init() {
@@ -415,6 +588,7 @@
                 await loadDatabase();
                 setupSearch();
                 renderEntries();
+                setupSwipeGestures();
                 
                 // Set up real-time updates (optional)
                 setupRealtimeUpdates();
@@ -511,6 +685,79 @@
                 });
         }
 
+        // Setup swipe gestures for mobile
+        function setupSwipeGestures() {
+            if (window.innerWidth > 767) return; // Only on mobile
+            
+            let startX = 0;
+            let currentX = 0;
+            let cardElement = null;
+            let deleteBackground = null;
+            
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: true });
+            
+            function handleTouchStart(e) {
+                const swipeContainer = e.target.closest('.entry-swipe-container');
+                if (!swipeContainer) return;
+                
+                // Reset any other swiped cards
+                if (activeSwipeElement && activeSwipeElement !== swipeContainer) {
+                    activeSwipeElement.style.transform = 'translateX(0)';
+                    const oldDeleteBg = activeSwipeElement.parentElement.querySelector('.delete-background');
+                    if (oldDeleteBg) oldDeleteBg.classList.remove('visible');
+                }
+                
+                cardElement = swipeContainer;
+                deleteBackground = cardElement.parentElement.querySelector('.delete-background');
+                startX = e.touches[0].pageX;
+                currentX = startX;
+            }
+            
+            function handleTouchMove(e) {
+                if (!cardElement) return;
+                
+                currentX = e.touches[0].pageX;
+                const diffX = currentX - startX;
+                
+                // Only allow left swipe
+                if (diffX < 0) {
+                    e.preventDefault();
+                    const translateX = Math.max(diffX, -80); // Limit swipe distance
+                    cardElement.style.transform = `translateX(${translateX}px)`;
+                    
+                    // Show/hide delete button based on swipe distance
+                    if (Math.abs(translateX) > 40) {
+                        deleteBackground.classList.add('visible');
+                    } else {
+                        deleteBackground.classList.remove('visible');
+                    }
+                }
+            }
+            
+            function handleTouchEnd(e) {
+                if (!cardElement) return;
+                
+                const diffX = currentX - startX;
+                
+                if (diffX < -40) {
+                    // Snap to show delete button
+                    cardElement.style.transform = 'translateX(-80px)';
+                    deleteBackground.classList.add('visible');
+                    activeSwipeElement = cardElement;
+                } else {
+                    // Snap back
+                    cardElement.style.transform = 'translateX(0)';
+                    deleteBackground.classList.remove('visible');
+                    activeSwipeElement = null;
+                }
+                
+                cardElement = null;
+                deleteBackground = null;
+            }
+        }
+
         // Setup search functionality
         function setupSearch() {
             const searchInput = document.getElementById('searchInput');
@@ -562,7 +809,7 @@
             if (window.innerWidth < 768) return; // Skip on mobile
             
             const feed = document.getElementById('feed');
-            const entries = Array.from(feed.querySelectorAll('.entry'));
+            const entries = Array.from(feed.querySelectorAll('.entry-wrapper'));
             if (entries.length === 0) return;
             
             // Determine number of columns based on viewport width
@@ -602,6 +849,40 @@
             feed.style.height = maxHeight + 'px';
         }
 
+        // Delete entry functions
+        function requestDelete(entryId) {
+            entryToDelete = entryId;
+            document.getElementById('confirmationDialog').classList.add('show');
+        }
+
+        function cancelDelete() {
+            entryToDelete = null;
+            document.getElementById('confirmationDialog').classList.remove('show');
+        }
+
+        async function confirmDelete() {
+            if (!entryToDelete) return;
+            
+            try {
+                // Delete from Firebase
+                await db.collection('entries').doc(entryToDelete).delete();
+                
+                // Update local arrays
+                allEntries = allEntries.filter(entry => entry.id !== entryToDelete);
+                filteredEntries = filteredEntries.filter(entry => entry.id !== entryToDelete);
+                
+                // Close dialog
+                document.getElementById('confirmationDialog').classList.remove('show');
+                entryToDelete = null;
+                
+                // Re-render
+                renderEntries();
+            } catch (error) {
+                console.error('Error deleting entry:', error);
+                showError('Failed to delete the screenshot. Please try again.');
+            }
+        }
+
         // Search by tag
         function searchByTag(tag) {
             document.getElementById('searchInput').value = tag;
@@ -634,141 +915,41 @@
                 }
                 
                 return `
-                    <div class="entry${!hasAnimated ? ' animate-in' : ''}">
-                        <div class="entry-header">
-                            <h2 class="entry-title">${escapeHtml(entry.title || '')}</h2>
-                            <time class="entry-date">${formatDate(entry.timestamp)}</time>
+                    <div class="entry-wrapper${!hasAnimated ? ' animate-in' : ''}">
+                        <div class="delete-background" onclick="requestDelete('${entry.id}')">
+                            Delete
                         </div>
-                        ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
-                        ${(entry.calendar_link && entry.calendar_link !== "") || (entry.address && entry.address !== "") ? `
-                            <div class="action-links">
-                                ${entry.calendar_link && entry.calendar_link !== "" ? `
-                                    <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
-                                        Add to Calendar
-                                    </a>
+                        <div class="entry-swipe-container">
+                            <div class="entry${!hasAnimated ? ' animate-in' : ''}">
+                                <div class="delete-icon" onclick="requestDelete('${entry.id}')">×</div>
+                                <div class="entry-header">
+                                    <h2 class="entry-title">${escapeHtml(entry.title || '')}</h2>
+                                    <time class="entry-date">${formatDate(entry.timestamp)}</time>
+                                </div>
+                                ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                                ${(entry.calendar_link && entry.calendar_link !== "") || (entry.address && entry.address !== "") ? `
+                                    <div class="action-links">
+                                        ${entry.calendar_link && entry.calendar_link !== "" ? `
+                                            <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
+                                                Add to Calendar
+                                            </a>
+                                        ` : ''}
+                                        ${entry.address && entry.address !== "" ? `
+                                            <a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">
+                                                View on Maps
+                                            </a>
+                                        ` : ''}
+                                    </div>
                                 ` : ''}
-                                ${entry.address && entry.address !== "" ? `
-                                    <a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">
-                                        View on Maps
-                                    </a>
+                                ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
+                                ${tags.length > 0 ? `
+                                    <div class="tags">
+                                        ${tags.map(tag => `
+                                            <span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>
+                                        `).join('')}
+                                    </div>
                                 ` : ''}
                             </div>
-                        ` : ''}
-                        ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
-                        ${tags.length > 0 ? `
-                            <div class="tags">
-                                ${tags.map(tag => `
-                                    <span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>
-                                `).join('')}
-                            </div>
-                        ` : ''}
+                        </div>
                     </div>
                 `;
-            }).join('');
-            
-            // Apply masonry layout after rendering
-            setTimeout(() => {
-                applyMasonryLayout();
-            }, 50);
-            
-            // Mark that we've animated once
-            if (!hasAnimated) {
-                hasAnimated = true;
-            }
-        }
-
-        // Generate Google Maps link from address
-        function generateMapsLink(address) {
-            // Clean and encode the address for URL
-            const cleanAddress = address.trim();
-            const encodedAddress = encodeURIComponent(cleanAddress);
-            return `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-        }
-
-        // Format content (handle bullet points)
-        function formatContent(content) {
-            if (typeof content !== 'string' || !content.trim()) {
-                return ''; // Return nothing if content isn't a string or is empty
-            }
-
-            // 1. Split the content string into an array using the comma
-            const items = content.split(',');
-
-            // 2. Create an HTML list item <li> for each piece of text
-            const listItems = items.map(item => {
-                const trimmedItem = item.trim(); // Remove extra whitespace
-                if (trimmedItem) {
-                    // Make sure to escape the text for security!
-                    return `<li>${escapeHtml(trimmedItem)}</li>`;
-                }
-                return '';
-            }).filter(item => item); // Filter out any empty items
-
-            // 3. If we have list items, wrap them all in <ul> tags
-            if (listItems.length > 0) {
-                return `<ul>${listItems.join('')}</ul>`;
-            }
-
-            // Fallback if something goes wrong
-            return `<p>${escapeHtml(content)}</p>`;
-        }
-
-        // Format date
-        function formatDate(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) {
-                return date.toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    hour12: true 
-                });
-            } else if (diffDays === 1) {
-                return 'Yesterday';
-            } else if (diffDays < 7) {
-                return `${diffDays} days ago`;
-            } else {
-                return date.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric',
-                    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-                });
-            }
-        }
-
-        // Escape HTML
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return (text || '').toString().replace(/[&<>"']/g, m => map[m]);
-        }
-
-        // Show error
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-
-        // Start the app
-        init();
-        
-        // Reapply masonry on window resize
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                applyMasonryLayout();
-            }, 250);
-        });
-    </script>
-</body>
-</html>
