@@ -1,4 +1,16 @@
-// Firebase configuration
+// =================================================================
+// SCRIPT.JS - A CLEAN, FULL REWRITE
+// This script is designed to be robust and combines all features:
+// - Fetches and displays data from Firebase
+// - Masonry layout on desktop
+// - Swipe-to-delete on mobile
+// - Persistent deletion using the correct Firestore Document ID
+// - Search and filter functionality
+// =================================================================
+
+
+// --- 1. CONFIGURATION AND GLOBAL STATE ---
+
 const firebaseConfig = {
     apiKey: "AIzaSyAYPMUjJDf5cInkMY40erfhq6_Idwi2AHs",
     authDomain: "prism-8158b.firebaseapp.com",
@@ -8,96 +20,47 @@ const firebaseConfig = {
     appId: "1:720887543116:web:e577efa6e8cd9abe9bcbe9",
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// Global variables to hold state
 let allEntries = [];
 let filteredEntries = [];
-let hasAnimated = false;
 let entryToDelete = null;
 let activeSwipeElement = null;
+let hasAnimated = false;
 
-// Initialize the app
+
+// --- 2. INITIALIZATION ---
+
+// Main function to start the application
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+});
+
 async function init() {
     try {
-        await loadDatabase();
-        setupSearch();
         setupEventListeners();
-        setupSwipeGestures();
-        renderEntries();
-        setupRealtimeUpdates();
+        setupResizeListener();
+        await loadAndRender(); // Load initial data and display it
+        setupRealtimeUpdates(); // Listen for new entries
     } catch (error) {
-        showError('Failed to load screenshots. Please check your configuration.');
+        showError('Failed to initialize the application.');
         console.error('Initialization error:', error);
     }
 }
 
-// Setup Event Listeners for dialog buttons
-function setupEventListeners() {
-    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-    const confirmCancelBtn = document.getElementById('confirmCancelBtn');
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', confirmDelete);
-    }
-    if (confirmCancelBtn) {
-        confirmCancelBtn.addEventListener('click', cancelDelete);
-    }
+// Helper to combine loading and rendering for a clean startup
+async function loadAndRender() {
+    await loadDatabase();
+    renderEntries();
+    setupSwipeGestures(); // Setup swipe after initial entries are rendered
 }
 
-// Setup swipe gestures for mobile
-function setupSwipeGestures() {
-    let startX = 0, currentX = 0, isSwiping = false, cardElement = null, deleteBackground = null;
 
-    document.getElementById('feed').addEventListener('touchstart', (e) => {
-        const swipeContainer = e.target.closest('.entry-swipe-container');
-        if (!swipeContainer || window.innerWidth > 767) return;
+// --- 3. DATA HANDLING (FIREBASE) ---
 
-        if (activeSwipeElement && activeSwipeElement !== swipeContainer) {
-            activeSwipeElement.style.transform = 'translateX(0)';
-            const oldDeleteBg = activeSwipeElement.parentElement.querySelector('.delete-background');
-            if (oldDeleteBg) oldDeleteBg.classList.remove('visible');
-        }
-        cardElement = swipeContainer;
-        deleteBackground = cardElement.parentElement.querySelector('.delete-background');
-        startX = e.touches[0].pageX;
-        isSwiping = true;
-    }, { passive: true });
-
-    document.getElementById('feed').addEventListener('touchmove', (e) => {
-        if (!isSwiping || !cardElement) return;
-        currentX = e.touches[0].pageX;
-        const diffX = currentX - startX;
-        if (diffX < 0) {
-            const translateX = Math.max(diffX, -80);
-            cardElement.style.transform = `translateX(${translateX}px)`;
-            if (deleteBackground) {
-                deleteBackground.classList.toggle('visible', Math.abs(translateX) > 40);
-            }
-        }
-    }, { passive: true });
-
-    document.getElementById('feed').addEventListener('touchend', () => {
-        if (!isSwiping || !cardElement) return;
-        const diffX = currentX - startX;
-        if (diffX < -40) {
-            cardElement.style.transform = 'translateX(-80px)';
-            if (deleteBackground) deleteBackground.classList.add('visible');
-            activeSwipeElement = cardElement;
-        } else {
-            cardElement.style.transform = 'translateX(0)';
-            if (deleteBackground) deleteBackground.classList.remove('visible');
-            activeSwipeElement = null;
-        }
-        isSwiping = false;
-        cardElement = null;
-        deleteBackground = null;
-        startX = 0;
-        currentX = 0;
-    });
-}
-
-// Load all entries from Firebase
+// Fetches all entries from Firestore and stores them in the `allEntries` array
 async function loadDatabase() {
     try {
         const snapshot = await db.collection('entries').orderBy('timestamp', 'desc').get();
@@ -106,24 +69,51 @@ async function loadDatabase() {
             const entryData = (data.data && typeof data.data === 'string') ? JSON.parse(data.data) : data;
             const timestamp = data.timestamp || data.createdAt;
 
-            // ===== THE CORE FIX IS HERE =====
-            // We store the real ID in `docId` to prevent collision with any `id` field in the data.
+            // ===== THE DEFINITIVE ID FIX =====
+            // The real Firestore ID is stored in `docId` to prevent any collision
+            // with an `id` field from the document's data.
             return {
                 ...entryData,
                 firebaseTimestamp: timestamp,
-                docId: doc.id 
+                docId: doc.id
             };
-        // We also update the filter to look for the new `docId` property.
-        }).filter(entry => entry && entry.docId);
+        }).filter(entry => entry && entry.docId); // Ensure only valid entries are kept
 
-        filteredEntries = [...allEntries];
+        filteredEntries = [...allEntries]; // Initially, all entries are shown
+
     } catch (error) {
         console.error("Database load error:", error);
         showError("Failed to load data from the database.");
     }
 }
 
-// Render entries to the DOM
+// Listens for new entries in real-time
+function setupRealtimeUpdates() {
+    db.collection('entries')
+      .orderBy('timestamp', 'desc')
+      .limit(1)
+      .onSnapshot((snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+                const newDoc = change.doc;
+                const exists = allEntries.some(entry => entry.docId === newDoc.id);
+                if (!exists) {
+                    // A new entry was added, let's reload to keep things simple and robust
+                    loadAndRender();
+                }
+            }
+            if (change.type === 'removed') {
+                // An entry was removed elsewhere, let's update our view
+                loadAndRender();
+            }
+        });
+    });
+}
+
+
+// --- 4. RENDERING AND LAYOUT ---
+
+// Renders the `filteredEntries` array to the DOM
 function renderEntries() {
     const feed = document.getElementById('feed');
     const stats = document.getElementById('stats');
@@ -135,17 +125,10 @@ function renderEntries() {
     }
 
     feed.innerHTML = filteredEntries.map(entry => {
-        let tags = [];
-        if (entry.tags) {
-            if (typeof entry.tags === 'string') {
-                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
-            } else if (Array.isArray(entry.tags)) {
-                tags = entry.tags;
-            }
-        }
-        
-        // ===== THE SECOND FIX IS HERE =====
-        // All calls to requestDelete now use `entry.docId` instead of `entry.id`.
+        const tags = parseTags(entry.tags);
+
+        // This HTML structure supports both swipe-to-delete and masonry layout.
+        // It critically uses `entry.docId` for all delete actions.
         return `
             <div class="entry-wrapper${!hasAnimated ? ' animate-in' : ''}">
                 <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
@@ -175,6 +158,7 @@ function renderEntries() {
         `;
     }).join('');
 
+    // Use a short timeout to allow the browser to render the elements before calculating layout
     setTimeout(applyMasonryLayout, 50);
 
     if (!hasAnimated) {
@@ -182,15 +166,23 @@ function renderEntries() {
     }
 }
 
-// Masonry layout function (targets the wrapper)
+// Applies the masonry layout on desktop
 function applyMasonryLayout() {
-    if (window.innerWidth < 768) return;
+    if (window.innerWidth < 768) {
+        // On mobile, ensure feed height is automatic
+        document.getElementById('feed').style.height = 'auto';
+        return;
+    }
+
     const feed = document.getElementById('feed');
+    // The layout logic now correctly targets the `.entry-wrapper`
     const items = Array.from(feed.querySelectorAll('.entry-wrapper'));
     if (items.length === 0) return;
+
     let columns = 2;
     if (window.innerWidth >= 1400) columns = 4;
     else if (window.innerWidth >= 1024) columns = 3;
+    
     const gap = 20;
     const containerWidth = feed.offsetWidth;
     const columnWidth = (containerWidth - (gap * (columns - 1))) / columns;
@@ -198,36 +190,92 @@ function applyMasonryLayout() {
 
     items.forEach(item => {
         item.style.width = `${columnWidth}px`;
-        let shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+        const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
         const left = shortestColumnIndex * (columnWidth + gap);
         const top = columnHeights[shortestColumnIndex];
         item.style.left = `${left}px`;
         item.style.top = `${top}px`;
         columnHeights[shortestColumnIndex] += item.offsetHeight + gap;
     });
+
     feed.style.height = `${Math.max(...columnHeights)}px`;
 }
 
-// Delete functions
-async function confirmDelete() {
-    if (!entryToDelete) return;
-    try {
-        await db.collection('entries').doc(entryToDelete).delete();
-        // Upon successful deletion, remove the entry from the local arrays and re-render.
-        allEntries = allEntries.filter(entry => entry.docId !== entryToDelete);
-        performSearch(document.getElementById('searchInput').value); // Re-run search/filter
-    } catch (error) {
-        console.error('Error deleting entry:', error);
-        showError('Failed to delete the screenshot. Please try again.');
-    }
-    cancelDelete();
+
+// --- 5. EVENT LISTENERS AND HANDLERS ---
+
+// Sets up listeners for static elements like dialog buttons and search bar
+function setupEventListeners() {
+    document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
+    document.getElementById('confirmCancelBtn')?.addEventListener('click', cancelDelete);
+
+    const searchInput = document.getElementById('searchInput');
+    let searchTimeout;
+    searchInput?.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            performSearch(e.target.value);
+        }, 300);
+    });
 }
+
+// Sets up the swipe-to-delete functionality for mobile
+function setupSwipeGestures() {
+    const feed = document.getElementById('feed');
+    let startX = 0, currentX = 0, cardElement = null;
+
+    feed.addEventListener('touchstart', (e) => {
+        if (window.innerWidth > 767) return;
+        const swipeContainer = e.target.closest('.entry-swipe-container');
+        if (swipeContainer) {
+            // Reset any other swiped card
+            if (activeSwipeElement && activeSwipeElement !== swipeContainer) {
+                activeSwipeElement.style.transform = 'translateX(0)';
+            }
+            cardElement = swipeContainer;
+            startX = e.touches[0].pageX;
+            currentX = startX;
+        }
+    }, { passive: true });
+
+    feed.addEventListener('touchmove', (e) => {
+        if (!cardElement || window.innerWidth > 767) return;
+        currentX = e.touches[0].pageX;
+        const diffX = currentX - startX;
+        if (diffX < 0) { // Only allow left swipe
+            cardElement.style.transform = `translateX(${Math.max(diffX, -80)}px)`;
+        }
+    }, { passive: true });
+
+    feed.addEventListener('touchend', () => {
+        if (!cardElement || window.innerWidth > 767) return;
+        const diffX = currentX - startX;
+        if (diffX < -50) { // If swiped far enough
+            cardElement.style.transform = 'translateX(-80px)';
+            activeSwipeElement = cardElement;
+        } else {
+            cardElement.style.transform = 'translateX(0)';
+            activeSwipeElement = null;
+        }
+        cardElement = null;
+    });
+}
+
+// Re-applies masonry layout on window resize, with a debounce
+function setupResizeListener() {
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(applyMasonryLayout, 250);
+    });
+}
+
+
+// --- 6. CORE ACTIONS (DELETE, SEARCH) ---
 
 function requestDelete(docId) {
     if (activeSwipeElement) {
         activeSwipeElement.style.transform = 'translateX(0)';
-        const oldDeleteBg = activeSwipeElement.parentElement.querySelector('.delete-background');
-        if (oldDeleteBg) oldDeleteBg.classList.remove('visible');
         activeSwipeElement = null;
     }
     entryToDelete = docId;
@@ -239,17 +287,18 @@ function cancelDelete() {
     document.getElementById('confirmationDialog').classList.remove('show');
 }
 
-
-// Other functions (no changes needed below)
-function setupSearch() {
-    const searchInput = document.getElementById('searchInput');
-    let searchTimeout;
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            performSearch(e.target.value);
-        }, 300);
-    });
+async function confirmDelete() {
+    if (!entryToDelete) return;
+    try {
+        await db.collection('entries').doc(entryToDelete).delete();
+        // After successful deletion, update the local data and re-render
+        allEntries = allEntries.filter(entry => entry.docId !== entryToDelete);
+        performSearch(document.getElementById('searchInput').value); // Re-applies current search/filter
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        showError('Failed to delete the screenshot. Please try again.');
+    }
+    cancelDelete(); // Close the dialog
 }
 
 function performSearch(query) {
@@ -258,24 +307,31 @@ function performSearch(query) {
         filteredEntries = [...allEntries];
     } else {
         filteredEntries = allEntries.filter(entry => {
-            let tags = [];
-            if (entry.tags) {
-                if (typeof entry.tags === 'string') {
-                    tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim());
-                } else if (Array.isArray(entry.tags)) {
-                    tags = entry.tags;
-                }
-            }
-            const searchableText = [entry.title || '', entry.summary || '', entry.content || '', ...tags].join(' ').toLowerCase();
+            const tags = parseTags(entry.tags);
+            const searchableText = [entry.title, entry.summary, entry.content, ...tags]
+                .join(' ')
+                .toLowerCase();
             return searchableText.includes(lowerCaseQuery);
         });
     }
     renderEntries();
 }
 
-function searchByTag(tag) {
+window.searchByTag = function(tag) {
     document.getElementById('searchInput').value = tag;
     performSearch(tag);
+}
+
+
+// --- 7. HELPER FUNCTIONS ---
+
+function parseTags(tagsData) {
+    if (!tagsData) return [];
+    if (Array.isArray(tagsData)) return tagsData;
+    if (typeof tagsData === 'string') {
+        return tagsData.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
+    }
+    return [];
 }
 
 function formatDate(timestamp) {
@@ -299,24 +355,15 @@ function generateMapsLink(address) {
 
 function escapeHtml(str) {
     const p = document.createElement('p');
-    p.textContent = str;
+    p.textContent = str || '';
     return p.innerHTML;
 }
 
 function showError(message) {
     const errorDiv = document.getElementById('error');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+    }
 }
-
-function setupRealtimeUpdates() { /* ... function content as before ... */ }
-
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(applyMasonryLayout, 250);
-});
-
-// Run the app
-init();
