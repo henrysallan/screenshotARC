@@ -1,6 +1,6 @@
 // =================================================================
-// SCRIPT.JS - FINAL VERSION 2.1
-// This version includes fixes for missing elements and resize bug.
+// SCRIPT.JS - FINAL VERSION 2.2
+// Added product link support and updated rendering
 // =================================================================
 
 // --- 1. CONFIGURATION AND GLOBAL STATE ---
@@ -73,11 +73,12 @@ function renderEntries() {
     feed.innerHTML = filteredEntries.map(entry => {
         const tags = Array.isArray(entry.tags) ? entry.tags : [];
         
-        // ===== FIX #1: Added back the logic for calendar and address links =====
-        const actionLinksHTML = (entry.calendar_link || entry.address) ? `
+        // Create action links HTML including product link
+        const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
             <div class="action-links">
                 ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
                 ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
+                ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
             </div>
         ` : '';
 
@@ -113,7 +114,6 @@ function applyMasonryLayout() {
     const feed = document.getElementById('feed');
     const items = Array.from(feed.querySelectorAll('.entry-wrapper'));
 
-    // ===== FIX #3: Added 'else' block to clear styles on mobile =====
     if (window.innerWidth >= 768) {
         // --- Desktop Masonry Logic ---
         if (items.length === 0) return;
@@ -232,7 +232,8 @@ function performSearch(query) {
     const lowerCaseQuery = query.toLowerCase().trim();
     filteredEntries = lowerCaseQuery ? allEntries.filter(entry => {
         const tags = Array.isArray(entry.tags) ? entry.tags : [];
-        return [entry.title, entry.summary, ...tags].join(' ').toLowerCase().includes(lowerCaseQuery);
+        const productName = entry.product_name || '';
+        return [entry.title, entry.summary, productName, ...tags].join(' ').toLowerCase().includes(lowerCaseQuery);
     }) : [...allEntries];
     renderEntries();
 }
