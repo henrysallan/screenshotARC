@@ -584,6 +584,7 @@
 
         // Initialize the app
         async function init() {
+            console.log('Initializing app...');
             try {
                 await loadDatabase();
                 setupSearch();
@@ -592,6 +593,7 @@
                 
                 // Set up real-time updates (optional)
                 setupRealtimeUpdates();
+                console.log('App initialized successfully');
             } catch (error) {
                 showError('Failed to load screenshots. Please check your configuration.');
                 console.error('Initialization error:', error);
@@ -600,10 +602,14 @@
 
         // Load all entries from Firebase
         async function loadDatabase() {
+            console.log('Starting to load database...');
             try {
+                console.log('Attempting to fetch from Firestore...');
                 const snapshot = await db.collection('entries')
                     .orderBy('timestamp', 'desc')
                     .get();
+                
+                console.log('Snapshot received, size:', snapshot.size);
                 
                 allEntries = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -629,9 +635,11 @@
                 }).filter(entry => entry !== null);
                 
                 filteredEntries = [...allEntries];
+                console.log('Loaded entries:', allEntries.length);
                 
             } catch (error) {
                 console.error('Database load error:', error);
+                console.error('Error details:', error.code, error.message);
                 allEntries = [];
                 filteredEntries = [];
             }
