@@ -386,11 +386,24 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <script>
-        // Configuration
-        const GITHUB_USERNAME = 'henrysallan'; // Replace with your GitHub username
-        const GITHUB_REPO = 'screenshotARC'; // Repository name
-        const DATA_FOLDER = 'data'; // Folder containing JSON files
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYPMUjJDf5cInkMY40erfhq6_Idwi2AHs",
+            authDomain: "prism-8158b.firebaseapp.com",
+            projectId: "prism-8158b",
+            storageBucket: "prism-8158b.firebasestorage.app",
+            messagingSenderId: "720887543116",
+            appId: "1:720887543116:web:e577efa6e8cd9abe9bcbe9",
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
         
         let allEntries = [];
         let filteredEntries = [];
@@ -402,60 +415,100 @@
                 await loadDatabase();
                 setupSearch();
                 renderEntries();
+                
+                // Set up real-time updates (optional)
+                setupRealtimeUpdates();
             } catch (error) {
                 showError('Failed to load screenshots. Please check your configuration.');
                 console.error('Initialization error:', error);
             }
         }
 
-        // Load all JSON files from GitHub
+        // Load all entries from Firebase
         async function loadDatabase() {
-            // First, get the list of files in the data folder
-            const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${DATA_FOLDER}`;
-            
             try {
-                const response = await fetch(apiUrl);
+                const snapshot = await db.collection('entries')
+                    .orderBy('timestamp', 'desc')
+                    .get();
                 
-                if (!response.ok) {
-                    throw new Error('Could not access repository');
-                }
-                
-                const files = await response.json();
-                
-                // Filter for JSON files only
-                const jsonFiles = files.filter(file => file.name.endsWith('.json'));
-                
-                // Load each JSON file
-                const loadPromises = jsonFiles.map(async (file) => {
-                    try {
-                        const fileResponse = await fetch(file.download_url);
-                        if (fileResponse.ok) {
-                            const data = await fileResponse.json();
-                            return data;
+                allEntries = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    // Parse the data field if it exists and is a string
+                    if (data.data && typeof data.data === 'string') {
+                        try {
+                            const parsedData = JSON.parse(data.data);
+                            return {
+                                id: doc.id,
+                                ...parsedData,
+                                firebaseTimestamp: data.timestamp || data.createdAt
+                            };
+                        } catch (e) {
+                            console.error('Error parsing data for document:', doc.id, e);
+                            return null;
                         }
-                    } catch (error) {
-                        console.error(`Error loading ${file.name}:`, error);
-                        return null;
                     }
-                });
+                    // Otherwise use the data as is
+                    return {
+                        id: doc.id,
+                        ...data
+                    };
+                }).filter(entry => entry !== null);
                 
-                // Wait for all files to load
-                const entries = await Promise.all(loadPromises);
-                
-                // Filter out any failed loads and store
-                allEntries = entries.filter(entry => entry !== null);
                 filteredEntries = [...allEntries];
-                
-                // Sort by date, newest first
-                allEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                filteredEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
             } catch (error) {
                 console.error('Database load error:', error);
-                // Initialize with empty array if folder doesn't exist
                 allEntries = [];
                 filteredEntries = [];
             }
+        }
+
+        // Setup real-time updates (optional - only for new entries)
+        function setupRealtimeUpdates() {
+            db.collection('entries')
+                .orderBy('timestamp', 'desc')
+                .limit(1)
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added' && allEntries.length > 0) {
+                            // Check if this is a new entry (not from initial load)
+                            const newDoc = change.doc;
+                            const exists = allEntries.some(entry => entry.id === newDoc.id);
+                            
+                            if (!exists) {
+                                const data = newDoc.data();
+                                let newEntry;
+                                
+                                // Parse the data field if it exists and is a string
+                                if (data.data && typeof data.data === 'string') {
+                                    try {
+                                        const parsedData = JSON.parse(data.data);
+                                        newEntry = {
+                                            id: newDoc.id,
+                                            ...parsedData,
+                                            firebaseTimestamp: data.timestamp || data.createdAt
+                                        };
+                                    } catch (e) {
+                                        console.error('Error parsing real-time data:', e);
+                                        return;
+                                    }
+                                } else {
+                                    newEntry = {
+                                        id: newDoc.id,
+                                        ...data
+                                    };
+                                }
+                                
+                                // Add to beginning of arrays
+                                allEntries.unshift(newEntry);
+                                filteredEntries.unshift(newEntry);
+                                
+                                // Re-render
+                                renderEntries();
+                            }
+                        }
+                    });
+                });
         }
 
         // Setup search functionality
@@ -479,11 +532,22 @@
                 filteredEntries = [...allEntries];
             } else {
                 filteredEntries = allEntries.filter(entry => {
+                    // Parse tags if they're in string format like "[tag1, tag2]"
+                    let tags = [];
+                    if (entry.tags) {
+                        if (typeof entry.tags === 'string') {
+                            // Remove brackets and split by comma
+                            tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim());
+                        } else if (Array.isArray(entry.tags)) {
+                            tags = entry.tags;
+                        }
+                    }
+                    
                     const searchableText = [
-                        entry.title,
-                        entry.summary,
-                        entry.content,
-                        ...(entry.tags || [])
+                        entry.title || '',
+                        entry.summary || '',
+                        entry.content || '',
+                        ...tags
                     ].join(' ').toLowerCase();
                     
                     return searchableText.includes(query);
@@ -557,37 +621,50 @@
                 return;
             }
             
-            feed.innerHTML = filteredEntries.map(entry => `
-                <div class="entry${!hasAnimated ? ' animate-in' : ''}">
-                    <div class="entry-header">
-                        <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
-                        <time class="entry-date">${formatDate(entry.timestamp)}</time>
+            feed.innerHTML = filteredEntries.map(entry => {
+                // Parse tags if they're in string format
+                let tags = [];
+                if (entry.tags) {
+                    if (typeof entry.tags === 'string') {
+                        // Remove brackets and split by comma
+                        tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
+                    } else if (Array.isArray(entry.tags)) {
+                        tags = entry.tags;
+                    }
+                }
+                
+                return `
+                    <div class="entry${!hasAnimated ? ' animate-in' : ''}">
+                        <div class="entry-header">
+                            <h2 class="entry-title">${escapeHtml(entry.title || '')}</h2>
+                            <time class="entry-date">${formatDate(entry.timestamp)}</time>
+                        </div>
+                        ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                        ${(entry.calendar_link && entry.calendar_link !== "") || (entry.address && entry.address !== "") ? `
+                            <div class="action-links">
+                                ${entry.calendar_link && entry.calendar_link !== "" ? `
+                                    <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
+                                        Add to Calendar
+                                    </a>
+                                ` : ''}
+                                ${entry.address && entry.address !== "" ? `
+                                    <a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">
+                                        View on Maps
+                                    </a>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                        ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
+                        ${tags.length > 0 ? `
+                            <div class="tags">
+                                ${tags.map(tag => `
+                                    <span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
                     </div>
-                    ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
-                    ${(entry.calendar_link && entry.calendar_link !== "") || (entry.address && entry.address !== "") ? `
-                        <div class="action-links">
-                            ${entry.calendar_link && entry.calendar_link !== "" ? `
-                                <a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">
-                                    Add to Calendar
-                                </a>
-                            ` : ''}
-                            ${entry.address && entry.address !== "" ? `
-                                <a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">
-                                    View on Maps
-                                </a>
-                            ` : ''}
-                        </div>
-                    ` : ''}
-                    ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
-                    ${entry.tags && entry.tags.length > 0 ? `
-                        <div class="tags">
-                            ${entry.tags.map(tag => `
-                                <span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
+                `;
+            }).join('');
             
             // Apply masonry layout after rendering
             setTimeout(() => {
@@ -671,7 +748,7 @@
                 '"': '&quot;',
                 "'": '&#039;'
             };
-            return text.replace(/[&<>"']/g, m => map[m]);
+            return (text || '').toString().replace(/[&<>"']/g, m => map[m]);
         }
 
         // Show error
@@ -692,9 +769,6 @@
                 applyMasonryLayout();
             }, 250);
         });
-        
-        // Remove automatic refresh - only update on manual page refresh
-        // This prevents the animation from replaying
     </script>
 </body>
 </html>
