@@ -71,7 +71,16 @@ function renderEntries() {
     }
 
     feed.innerHTML = filteredEntries.map(entry => {
-        const tags = Array.isArray(entry.tags) ? entry.tags : [];
+        // Parse tags properly from different formats
+        let tags = [];
+        if (entry.tags) {
+            if (typeof entry.tags === 'string') {
+                // Handle string format like "[tag1, tag2, tag3]" or "tag1, tag2, tag3"
+                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
+            } else if (Array.isArray(entry.tags)) {
+                tags = entry.tags;
+            }
+        }
         
         // Create action links HTML including product link
         const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
@@ -95,9 +104,11 @@ function renderEntries() {
                         ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
                         ${actionLinksHTML}
                         ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
-                        <div class="tags">
-                            ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
-                        </div>
+                        ${tags.length > 0 ? `
+                            <div class="tags">
+                                ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -231,9 +242,18 @@ async function confirmDelete() {
 function performSearch(query) {
     const lowerCaseQuery = query.toLowerCase().trim();
     filteredEntries = lowerCaseQuery ? allEntries.filter(entry => {
-        const tags = Array.isArray(entry.tags) ? entry.tags : [];
+        // Parse tags properly
+        let tags = [];
+        if (entry.tags) {
+            if (typeof entry.tags === 'string') {
+                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(t => t);
+            } else if (Array.isArray(entry.tags)) {
+                tags = entry.tags;
+            }
+        }
+        
         const productName = entry.product_name || '';
-        return [entry.title, entry.summary, productName, ...tags].join(' ').toLowerCase().includes(lowerCaseQuery);
+        return [entry.title, entry.summary, entry.content, productName, ...tags].join(' ').toLowerCase().includes(lowerCaseQuery);
     }) : [...allEntries];
     renderEntries();
 }
