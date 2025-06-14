@@ -39,31 +39,28 @@ async function loadDatabase() {
 
         allEntries = snapshot.docs.map(doc => {
             const data = doc.data();
-            if (data.data && typeof data.data === 'string') {
-                try {
-                    const parsedData = JSON.parse(data.data);
-                    return {
-                        id: doc.id,
-                        ...parsedData,
-                        firebaseTimestamp: data.timestamp || data.createdAt
-                    };
-                } catch (e) {
-                    console.error('Error parsing data for document:', doc.id, e);
-                    return null;
-                }
-            }
+
+            // This logic handles both nested and flat data structures consistently.
+            const entryData = (data.data && typeof data.data === 'string') ? JSON.parse(data.data) : data;
+            
+            // This ensures firebaseTimestamp is always created from the top-level field.
+            const timestamp = data.timestamp || data.createdAt;
+
             return {
-                id: doc.id,
-                ...data
+                id: doc.id,          // The document's unique ID
+                ...entryData,        // The actual content (title, summary, etc.)
+                firebaseTimestamp: timestamp // The consistent timestamp property
             };
-        }).filter(entry => entry !== null);
+
+        }).filter(entry => entry !== null && entry.id); // Also ensure entry and id exist
 
         filteredEntries = [...allEntries];
 
     } catch (error) {
-        console.error('Database load error:', error);
+        console.error("Database load error:", error);
         allEntries = [];
         filteredEntries = [];
+        showError("Failed to load data from the database.");
     }
 }
 
