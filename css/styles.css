@@ -1,6 +1,6 @@
 /* =================================================================
-// STYLES.CSS - FINAL VERSION 2.31
-// Added inline editing functionality for desktop
+// STYLES.CSS - FINAL VERSION 2.4
+// Refined edit mode: hide edit/delete buttons, style save/cancel buttons
 // ================================================================= */
 @font-face {
     font-family: 'LibreBaskerville';
@@ -29,10 +29,10 @@ body {
 
 .container { max-width: 800px; margin: 0 auto; padding: 20px; }
 
-header { 
-    margin-bottom: 40px; 
-    text-align: center; 
-    position: relative; 
+header {
+    margin-bottom: 40px;
+    text-align: center;
+    position: relative;
 }
 
 h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; letter-spacing: 1px; }
@@ -42,10 +42,10 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
 .search-bar:focus { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
 .search-bar::placeholder { color: #86868b; font-style: italic; }
 
-.stats { 
-    color: #86868b; 
-    font-size: 14px; 
-    font-style: italic; 
+.stats {
+    color: #86868b;
+    font-size: 14px;
+    font-style: italic;
     margin: 0;
 }
 
@@ -80,7 +80,7 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
         margin-bottom: 20px;
         gap: 10px;
     }
-    
+
     .stats {
         text-align: left;
     }
@@ -112,7 +112,7 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
         font-size: 12px;
         margin-left: 12px;
     }
-    
+
     .database-expand-icon {
         font-size: 12px;
         margin-left: 4px;
@@ -128,7 +128,7 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
     .feed { position: relative; display: block; gap: 0; }
     .entry-wrapper { margin-bottom: 20px; position: absolute; overflow: visible; transition: top 0.3s, left 0.3s; }
     .delete-background { display: none; }
-    
+
     /* Edit and Delete Icons */
     .edit-icon, .delete-icon {
         display: flex;
@@ -165,10 +165,18 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
     }
     .delete-icon:hover { background-color: #e60000; transform: scale(1.1); }
     .edit-icon:hover { background-color: #0056b3; transform: scale(1.1); }
-    
+
     .feed.database-view .entry .delete-icon,
     .feed.database-view .entry .edit-icon {
         display: flex;
+    }
+
+    /* Hide edit and delete icons in edit mode */
+    .entry.edit-mode .edit-icon,
+    .entry.edit-mode .delete-icon {
+        opacity: 0 !important;
+        transform: scale(0.8) !important;
+        pointer-events: none;
     }
 }
 
@@ -218,23 +226,35 @@ textarea.edit-field {
     margin-top: 10px;
 }
 .edit-button {
-    padding: 8px 16px;
-    border: none;
+    padding: 10px 16px;
     border-radius: 8px;
+    text-decoration: none;
     font-size: 14px;
     font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.2s;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin-left: 0;
+    margin-bottom: 0;
+    transition: all 0.2s;
+    border: 1.5px solid;
+    background-color: white;
+    cursor: pointer;
 }
 .edit-button:hover {
-    opacity: 0.8;
+    opacity: 1;
 }
 .edit-cancel {
+    border-color: #e8e8ed;
+    color: #3e3e43;
+}
+.edit-cancel:hover {
     background-color: #e8e8ed;
     color: #3e3e43;
 }
 .edit-save {
+    border-color: #34c759;
+    color: #34c759;
+}
+.edit-save:hover {
     background-color: #34c759;
     color: white;
 }
@@ -252,18 +272,18 @@ textarea.edit-field {
 
 /* --- Updated Action Links Styles (Outlined Buttons) --- */
 .action-links { display: flex; flex-wrap: wrap; margin-bottom: 12px; }
-.calendar-link, .address-link, .product-link { 
-    display: inline-flex; 
-    align-items: center; 
-    gap: 8px; 
-    padding: 10px 16px; 
-    border-radius: 8px; 
-    text-decoration: none; 
-    font-size: 14px; 
-    font-weight: 500; 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-    margin-right: 12px; 
-    margin-bottom: 12px; 
+.calendar-link, .address-link, .product-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin-right: 12px;
+    margin-bottom: 12px;
     transition: all 0.2s;
     border: 1.5px solid;
     background-color: white;
