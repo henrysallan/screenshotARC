@@ -1,6 +1,6 @@
 // =================================================================
-// SCRIPT.JS - FINAL VERSION 2.2
-// Added product link support and updated rendering
+// SCRIPT.JS - FINAL VERSION 2.3
+// Added inline editing functionality for desktop view
 // =================================================================
 
 // --- 1. CONFIGURATION AND GLOBAL STATE ---
@@ -17,10 +17,11 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let allEntries = [];
-let currentView = 'masonry'; // Track current view
+let currentView = 'masonry';
 let filteredEntries = [];
 let entryToDelete = null;
 let activeSwipeElement = null;
+let entryInEditMode = null; // Track the docId of the entry being edited
 
 // --- 2. INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', init);
@@ -36,6 +37,10 @@ async function init() {
 }
 
 async function loadAndRender() {
+    // If a card is being edited, cancel it before re-rendering
+    if (entryInEditMode) {
+        entryInEditMode = null;
+    }
     await loadDatabase();
     renderEntries();
 }
@@ -71,107 +76,107 @@ function renderEntries() {
         return;
     }
 
+    const renderLogic = (entry) => {
+        // Parse tags properly from different formats and clean single quotes
+        let tags = [];
+        if (entry.tags) {
+            if (typeof entry.tags === 'string') {
+                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t); //
+            } else if (Array.isArray(entry.tags)) {
+                tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t); //
+            }
+        }
+        const tagsAsString = tags.join(', ');
+
+        const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
+            <div class="action-links">
+                ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
+                ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
+                ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
+            </div>
+        ` : '';
+
+        // The content is a comma-separated string, convert it to bullet points for display
+        const contentAsList = formatContent(entry.content);
+
+        return `
+            <div class="entry" data-doc-id="${entry.docId}">
+                <div class="edit-icon" onclick="toggleEditMode('${entry.docId}')">✎</div>
+                <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
+                
+                <div class="entry-display-content">
+                    <div class="entry-header">
+                        <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
+                        <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
+                    </div>
+                    ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
+                    ${actionLinksHTML}
+                    ${contentAsList ? `<div class="entry-content">${contentAsList}</div>` : ''}
+                    ${tags.length > 0 ? `
+                        <div class="tags">
+                            ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="edit-form-container">
+                    <label class="edit-label" for="title-${entry.docId}">Title</label>
+                    <input type="text" id="title-${entry.docId}" class="edit-field" value="${escapeHtml(entry.title || '')}">
+                    
+                    <label class="edit-label" for="summary-${entry.docId}">Summary</label>
+                    <textarea id="summary-${entry.docId}" class="edit-field">${escapeHtml(entry.summary || '')}</textarea>
+                    
+                    <label class="edit-label" for="content-${entry.docId}">Content (comma-separated)</label>
+                    <textarea id="content-${entry.docId}" class="edit-field">${escapeHtml(entry.content || '')}</textarea>
+                    
+                    <label class="edit-label" for="tags-${entry.docId}">Tags (comma-separated)</label>
+                    <input type="text" id="tags-${entry.docId}" class="edit-field" value="${escapeHtml(tagsAsString)}">
+                    
+                    <div class="edit-actions">
+                        <button class="edit-button edit-cancel" onclick="cancelEdit('${entry.docId}')">Cancel</button>
+                        <button class="edit-button edit-save" onclick="saveChanges('${entry.docId}')">Save</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
     if (currentView === 'database') {
-        // Database view rendering
         feed.innerHTML = filteredEntries.map(entry => {
-            // Parse tags properly from different formats and clean single quotes
             let tags = [];
             if (entry.tags) {
                 if (typeof entry.tags === 'string') {
-                    tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
+                    tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t); //
                 } else if (Array.isArray(entry.tags)) {
-                    tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
+                    tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t); //
                 }
             }
-            
-            // Create action links HTML including product link
-            const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
-                <div class="action-links">
-                    ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
-                    ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
-                    ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
-                </div>
-            ` : '';
-            
             return `
                 <div class="entry-wrapper" data-entry-id="${entry.docId}">
                     <div class="database-row" onclick="toggleDatabaseRow('${entry.docId}')">
                         <div class="database-row-title">${escapeHtml(entry.title || 'Untitled')}</div>
                         <div class="database-row-tags">
-                            ${tags.slice(0, 3).map(tag => `
-                                <span class="tag" onclick="event.stopPropagation(); searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>
-                            `).join('')}
+                            ${tags.slice(0, 3).map(tag => `<span class="tag" onclick="event.stopPropagation(); searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
                             ${tags.length > 3 ? `<span class="tag">+${tags.length - 3}</span>` : ''}
                         </div>
                         <time class="database-row-date">${formatDate(entry.firebaseTimestamp)}</time>
                         <span class="database-expand-icon">▼</span>
                     </div>
                     <div class="database-content">
-                        <div class="entry">
-                            <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
-                            <div class="entry-header">
-                                <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
-                                <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
-                            </div>
-                            ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
-                            ${actionLinksHTML}
-                            ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
-                            ${tags.length > 0 ? `
-                                <div class="tags">
-                                    ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
+                        ${renderLogic(entry)}
                     </div>
                 </div>
             `;
         }).join('');
     } else {
-        // Masonry view rendering (existing code)
-        feed.innerHTML = filteredEntries.map(entry => {
-            // [Keep the existing masonry view code here - same as in your current renderEntries function]
-            // Parse tags properly from different formats and clean single quotes
-            let tags = [];
-            if (entry.tags) {
-                if (typeof entry.tags === 'string') {
-                    tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
-                } else if (Array.isArray(entry.tags)) {
-                    tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
-                }
-            }
-            
-            // Create action links HTML including product link
-            const actionLinksHTML = (entry.calendar_link || entry.address || entry.amazon_search_url) ? `
-                <div class="action-links">
-                    ${entry.calendar_link ? `<a href="${escapeHtml(entry.calendar_link)}" class="calendar-link" target="_blank">Add to Calendar</a>` : ''}
-                    ${entry.address ? `<a href="${generateMapsLink(entry.address)}" class="address-link" target="_blank">View on Maps</a>` : ''}
-                    ${entry.amazon_search_url ? `<a href="${escapeHtml(entry.amazon_search_url)}" class="product-link" target="_blank">Find on Amazon</a>` : ''}
+        feed.innerHTML = filteredEntries.map(entry => `
+            <div class="entry-wrapper">
+                <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
+                <div class="entry-swipe-container">
+                    ${renderLogic(entry)}
                 </div>
-            ` : '';
-
-            return `
-                <div class="entry-wrapper">
-                    <div class="delete-background" onclick="requestDelete('${entry.docId}')">Delete</div>
-                    <div class="entry-swipe-container">
-                        <div class="entry">
-                            <div class="delete-icon" onclick="requestDelete('${entry.docId}')">×</div>
-                            <div class="entry-header">
-                                <h2 class="entry-title">${escapeHtml(entry.title)}</h2>
-                                <time class="entry-date">${formatDate(entry.firebaseTimestamp)}</time>
-                            </div>
-                            ${entry.summary ? `<p class="entry-summary">${escapeHtml(entry.summary)}</p>` : ''}
-                            ${actionLinksHTML}
-                            ${entry.content ? `<div class="entry-content">${formatContent(entry.content)}</div>` : ''}
-                            ${tags.length > 0 ? `
-                                <div class="tags">
-                                    ${tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+            </div>
+        `).join('');
     }
 
     setTimeout(() => {
@@ -181,6 +186,7 @@ function renderEntries() {
         setupDynamicEventListeners();
     }, 50);
 }
+
 
 function applyMasonryLayout() {
     if (currentView !== 'masonry') return;
@@ -196,7 +202,7 @@ function applyMasonryLayout() {
         const columnHeights = Array(columns).fill(0);
 
         items.forEach(item => {
-            item.style.position = 'absolute'; // Ensure position is set
+            item.style.position = 'absolute';
             item.style.width = `${columnWidth}px`;
             const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
             const left = shortestColumnIndex * (columnWidth + gap);
@@ -230,33 +236,29 @@ function switchView(view) {
     const feed = document.getElementById('feed');
     const currentIcon = document.getElementById('currentViewIcon');
     
-    // Update active state
     document.querySelectorAll('.view-option').forEach(option => {
         option.classList.toggle('active', option.dataset.view === view);
     });
     
-    // Update current icon
     currentIcon.textContent = view === 'masonry' ? '⊞' : '☰';
-    
-    // Close dropdown
     dropdown.classList.remove('show');
-    
-    // Update feed class
     feed.classList.toggle('database-view', view === 'database');
-    
-    // Re-render entries
     renderEntries();
 }
 
-// Toggle database row expansion
 function toggleDatabaseRow(docId) {
     if (currentView !== 'database') return;
-    
-    const wrapper = document.querySelector(`[data-entry-id="${docId}"]`);
+    const wrapper = document.querySelector(`.entry-wrapper[data-entry-id="${docId}"]`);
     if (wrapper) {
+        // If we are opening an entry that is in edit mode, cancel the edit first
+        if (entryInEditMode && entryInEditMode !== docId) {
+             cancelEdit(entryInEditMode);
+        }
         wrapper.classList.toggle('expanded');
+        // Recalculate layout if needed, though this view is typically not masonry
     }
 }
+
 
 window.toggleViewDropdown = toggleViewDropdown;
 window.switchView = switchView;
@@ -267,8 +269,8 @@ function setupStaticEventListeners() {
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
     document.getElementById('confirmCancelBtn')?.addEventListener('click', cancelDelete);
     document.addEventListener('click', (e) => {
-    if (!e.target.closest('.view-switcher')) {
-        document.getElementById('viewDropdown').classList.remove('show');
+        if (!e.target.closest('.view-switcher')) {
+            document.getElementById('viewDropdown').classList.remove('show');
         }
     });
     const searchInput = document.getElementById('searchInput');
@@ -281,7 +283,13 @@ function setupStaticEventListeners() {
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(applyMasonryLayout, 250);
+        resizeTimeout = setTimeout(() => {
+            // If something is being edited, cancel it to avoid layout bugs on resize
+            if (entryInEditMode) {
+                cancelEdit(entryInEditMode);
+            }
+            applyMasonryLayout();
+        }, 250);
     });
 }
 
@@ -324,9 +332,12 @@ function setupDynamicEventListeners() {
     });
 }
 
-
-// --- 6. CORE ACTIONS (DELETE, SEARCH) ---
+// --- 6. CORE ACTIONS (DELETE, SEARCH, EDIT) ---
 function requestDelete(docId) {
+    // If a card is in edit mode, cancel the edit before deleting
+    if(entryInEditMode) {
+        cancelEdit(entryInEditMode);
+    }
     entryToDelete = docId;
     document.getElementById('confirmationDialog').classList.add('show');
 }
@@ -340,9 +351,9 @@ async function confirmDelete() {
     if (!entryToDelete) return;
     try {
         await db.collection('entries').doc(entryToDelete).delete();
-        await loadAndRender(); // Easiest way to ensure UI is in sync
+        await loadAndRender(); // Reload all data and re-render
     } catch (error) {
-        showError('Failed to delete the screenshot.');
+        showError('Failed to delete the shard.');
         console.error("Delete error:", error);
     }
     cancelDelete();
@@ -351,13 +362,12 @@ async function confirmDelete() {
 function performSearch(query) {
     const lowerCaseQuery = query.toLowerCase().trim();
     filteredEntries = lowerCaseQuery ? allEntries.filter(entry => {
-        // Parse tags properly and clean single quotes
         let tags = [];
         if (entry.tags) {
             if (typeof entry.tags === 'string') {
-                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t);
+                tags = entry.tags.replace(/^\[|\]$/g, '').split(',').map(t => t.trim().replace(/^'|'$/g, '')).filter(t => t); //
             } else if (Array.isArray(entry.tags)) {
-                tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t);
+                tags = entry.tags.map(t => typeof t === 'string' ? t.replace(/^'|'$/g, '') : t); //
             }
         }
         
@@ -373,6 +383,78 @@ window.searchByTag = (tag) => {
     performSearch(tag);
 };
 
+// --- EDIT FUNCTIONS ---
+function toggleEditMode(docId) {
+    // If another card is already in edit mode, cancel it first.
+    if (entryInEditMode && entryInEditMode !== docId) {
+        cancelEdit(entryInEditMode);
+    }
+
+    const card = document.querySelector(`.entry[data-doc-id="${docId}"]`);
+    if (!card) return;
+    
+    card.classList.add('edit-mode');
+    entryInEditMode = docId;
+
+    // After switching to edit mode, we may need to recalculate masonry layout
+    if (currentView === 'masonry') {
+        applyMasonryLayout();
+    }
+    // For database view, if the item is not expanded, expand it.
+    if(currentView === 'database'){
+        const wrapper = card.closest('.entry-wrapper');
+        if(wrapper && !wrapper.classList.contains('expanded')){
+            wrapper.classList.add('expanded');
+        }
+    }
+}
+
+function cancelEdit(docId) {
+    const card = document.querySelector(`.entry[data-doc-id="${docId}"]`);
+    if (card) {
+        card.classList.remove('edit-mode');
+    }
+    entryInEditMode = null;
+    
+    // Recalculate layout after canceling edit
+    if (currentView === 'masonry') {
+        applyMasonryLayout();
+    }
+}
+
+async function saveChanges(docId) {
+    const saveButton = document.querySelector(`.entry[data-doc-id="${docId}"] .edit-save`);
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+
+    const title = document.getElementById(`title-${docId}`).value;
+    const summary = document.getElementById(`summary-${docId}`).value;
+    const content = document.getElementById(`content-${docId}`).value;
+    const tags = document.getElementById(`tags-${docId}`).value;
+
+    const updatedData = {
+        title: title,
+        summary: summary,
+        content: content,
+        tags: tags,
+    };
+
+    try {
+        await db.collection('entries').doc(docId).update(updatedData);
+        // Once saved, exit edit mode and refresh data
+        await loadAndRender();
+    } catch (error) {
+        showError('Failed to save changes.');
+        console.error("Save error:", error);
+        saveButton.textContent = 'Save';
+        saveButton.disabled = false;
+    }
+}
+
+window.toggleEditMode = toggleEditMode;
+window.cancelEdit = cancelEdit;
+window.saveChanges = saveChanges;
+
 
 // --- 7. HELPER FUNCTIONS ---
 function formatDate(timestamp) {
@@ -383,18 +465,22 @@ function formatDate(timestamp) {
 
 function formatContent(content) {
     if (typeof content !== 'string' || !content.trim()) return '';
+    // The content is expected to be a comma-separated string which is then turned into a list
     const items = content.split(',').map(item => item.trim()).filter(item => item);
     if (items.length > 0) {
         return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
     }
-    return `<p>${escapeHtml(content)}</p>`;
+    return ''; // Return empty string if no valid content items
 }
 
 function generateMapsLink(address) {
-    return `https://maps.google.com/?q=${encodeURIComponent(address.trim())}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.trim())}`;
 }
 
 function escapeHtml(str = '') {
+    if (str === null || typeof str === 'undefined') {
+        return '';
+    }
     const p = document.createElement('p');
     p.textContent = str;
     return p.innerHTML;
