@@ -6,7 +6,6 @@
     font-style: normal;
     font-display: swap;
 }
-
 @font-face {
     font-family: 'LibreBaskerville';
     src: url('https://raw.githubusercontent.com/henrysallan/screenshotARC/main/fonts/LibreBaskerville-Bold.ttf') format('truetype');
@@ -14,7 +13,6 @@
     font-style: normal;
     font-display: swap;
 }
-
 @font-face {
     font-family: 'LibreBaskerville';
     src: url('https://raw.githubusercontent.com/henrysallan/screenshotARC/main/fonts/LibreBaskerville-Italic.ttf') format('truetype');
@@ -61,23 +59,6 @@ h1 {
     margin: 0 auto;
 }
 
-/* Desktop layout adjustments */
-@media (min-width: 768px) {
-    header {
-        text-align: left;
-        margin-bottom: 30px;
-    }
-
-    h1 {
-        margin-bottom: 15px;
-    }
-
-    .search-container {
-        margin: 0;
-        max-width: 400px;
-    }
-}
-
 .search-bar {
     width: 100%;
     padding: 15px 20px;
@@ -90,11 +71,9 @@ h1 {
     outline: none;
     transition: box-shadow 0.2s;
 }
-
 .search-bar:focus {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-
 .search-bar::placeholder {
     color: #86868b;
     font-style: italic;
@@ -114,27 +93,18 @@ h1 {
     gap: 20px;
 }
 
-/* Desktop masonry layout */
-@media (min-width: 768px) {
-    .container {
-        max-width: 1400px;
-    }
+/* --- Wrapper and Swipe Styles --- */
+.entry-wrapper {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden; /* Important for swipe effect */
+}
 
-    .stats {
-        text-align: left;
-        margin-bottom: 20px;
-    }
-
-    .feed {
-        position: relative;
-        display: block;
-    }
-    
-    .entry {
-        margin-bottom: 20px;
-        position: absolute;
-        transition: transform 0.2s, box-shadow 0.2s, top 0.3s, left 0.3s;
-    }
+.entry-swipe-container {
+    position: relative;
+    transition: transform 0.3s ease;
+    will-change: transform;
+    background-color: white; /* Ensures content isn't transparent */
 }
 
 .entry {
@@ -144,41 +114,7 @@ h1 {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: transform 0.2s, box-shadow 0.2s;
     break-inside: avoid;
-    margin-bottom: 20px;
-}
-
-/* Animation only on initial load */
-.entry.animate-in {
-    opacity: 0;
-    transform: translateX(-30px);
-    filter: blur(10px);
-    animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Stagger the animation for each card */
-.entry.animate-in:nth-child(1) { animation-delay: 0ms; }
-.entry.animate-in:nth-child(2) { animation-delay: 50ms; }
-.entry.animate-in:nth-child(3) { animation-delay: 100ms; }
-.entry.animate-in:nth-child(4) { animation-delay: 150ms; }
-.entry.animate-in:nth-child(5) { animation-delay: 200ms; }
-.entry.animate-in:nth-child(6) { animation-delay: 250ms; }
-.entry.animate-in:nth-child(7) { animation-delay: 300ms; }
-.entry.animate-in:nth-child(8) { animation-delay: 350ms; }
-.entry.animate-in:nth-child(9) { animation-delay: 400ms; }
-.entry.animate-in:nth-child(10) { animation-delay: 450ms; }
-.entry.animate-in:nth-child(n+11) { animation-delay: 500ms; }
-
-@keyframes slideIn {
-    0% {
-        opacity: 0;
-        transform: translateX(-30px);
-        filter: blur(10px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-        filter: blur(0);
-    }
+    position: relative;
 }
 
 .entry:hover {
@@ -186,13 +122,110 @@ h1 {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
+.delete-background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 80px;
+    background-color: #ff3b30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.delete-background.visible {
+    opacity: 1;
+}
+
+.delete-icon {
+    display: none; /* Hide desktop icon by default */
+}
+
+
+/* --- Desktop Masonry & Layout Adjustments --- */
+@media (min-width: 768px) {
+    .container {
+        max-width: 1400px;
+    }
+    .stats {
+        text-align: left;
+        margin-bottom: 20px;
+    }
+    .feed {
+        position: relative;
+        display: block; /* Override flexbox for masonry */
+        gap: 0;
+    }
+    /* Masonry now targets the wrapper */
+    .entry-wrapper {
+        margin-bottom: 20px;
+        position: absolute;
+        overflow: visible; /* Masonry items shouldn't hide shadows */
+        transition: transform 0.2s, box-shadow 0.2s, top 0.3s, left 0.3s;
+    }
+    /* Hide mobile-only swipe elements on desktop */
+    .delete-background {
+        display: none;
+    }
+    /* Show desktop-only delete icon */
+    .delete-icon {
+        display: flex;
+        position: absolute;
+        bottom: 15px;
+        right: 15px;
+        width: 32px;
+        height: 32px;
+        background-color: #ff3b30;
+        color: white;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        opacity: 0; /* Initially hidden */
+        transform: scale(0.8);
+        transition: opacity 0.2s, transform 0.2s;
+        z-index: 10;
+    }
+    .entry:hover .delete-icon {
+        opacity: 1;
+        transform: scale(1);
+    }
+    .delete-icon:hover {
+        background-color: #e60000;
+        transform: scale(1.1);
+    }
+}
+
+/* --- Mobile-Only Adjustments --- */
+@media (max-width: 767px) {
+    /* Enable vertical scrolling on swipeable items */
+    .entry-swipe-container {
+        touch-action: pan-y;
+    }
+    /* Ensure wrapper takes full width on mobile */
+    .entry-wrapper {
+        width: 100%;
+    }
+}
+
+
+/* --- General Card Content --- */
 .entry-header {
     display: flex;
     justify-content: space-between;
     align-items: start;
     margin-bottom: 12px;
 }
-
 .entry-title {
     font-size: 18px;
     font-weight: bold;
@@ -200,20 +233,17 @@ h1 {
     flex: 1;
     margin-right: 10px;
 }
-
 .entry-date {
     font-size: 13px;
     color: #86868b;
     white-space: nowrap;
     font-style: italic;
 }
-
 .entry-summary {
     color: #3e3e43;
     margin-bottom: 12px;
     line-height: 1.5;
 }
-
 .entry-content {
     background-color: #f5f5f7;
     border-radius: 8px;
@@ -222,25 +252,26 @@ h1 {
     font-size: 14px;
     color: #3e3e43;
 }
-
 .entry-content ul {
     list-style: none;
     padding-left: 0;
 }
-
 .entry-content li {
     position: relative;
     padding-left: 20px;
     margin-bottom: 5px;
 }
-
 .entry-content li:before {
     content: "•";
     position: absolute;
     left: 0;
     color: #0071e3;
 }
-
+.action-links {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
 .calendar-link, .address-link {
     display: inline-flex;
     align-items: center;
@@ -255,47 +286,33 @@ h1 {
     margin-bottom: 12px;
     transition: background-color 0.2s;
 }
-
 .calendar-link {
     background-color: #0071e3;
     color: white;
 }
-
 .calendar-link:hover {
     background-color: #005bb5;
 }
-
 .calendar-link::before {
     content: "📅";
     font-size: 16px;
 }
-
 .address-link {
     background-color: #34c759;
     color: white;
 }
-
 .address-link:hover {
     background-color: #28a745;
 }
-
 .address-link::before {
     content: "📍";
     font-size: 16px;
 }
-
-.action-links {
-    display: flex;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
 .tags {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
-
 .tag {
     background-color: #e8e8ed;
     color: #3e3e43;
@@ -305,26 +322,18 @@ h1 {
     transition: background-color 0.2s;
     cursor: pointer;
 }
-
 .tag:hover {
     background-color: #d2d2d7;
 }
 
-.no-results {
+/* --- Misc & Fallbacks --- */
+.no-results, .loading {
     text-align: center;
     color: #86868b;
     padding: 60px 20px;
     font-size: 16px;
     font-style: italic;
 }
-
-.loading {
-    text-align: center;
-    padding: 60px 20px;
-    color: #86868b;
-    font-style: italic;
-}
-
 .error {
     background-color: #fee;
     color: #c33;
@@ -333,8 +342,6 @@ h1 {
     text-align: center;
     margin-bottom: 20px;
 }
-
-/* Confirmation dialog */
 .confirmation-dialog {
     display: none;
     position: fixed;
@@ -348,11 +355,9 @@ h1 {
     justify-content: center;
     padding: 20px;
 }
-
 .confirmation-dialog.show {
     display: flex;
 }
-
 .confirmation-content {
     background-color: white;
     border-radius: 12px;
@@ -362,27 +367,23 @@ h1 {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     text-align: center;
 }
-
 .confirmation-title {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 12px;
     color: #1d1d1f;
 }
-
 .confirmation-message {
     font-size: 14px;
     color: #3e3e43;
     margin-bottom: 20px;
     line-height: 1.4;
 }
-
 .confirmation-buttons {
     display: flex;
     gap: 12px;
     justify-content: center;
 }
-
 .confirmation-button {
     padding: 10px 20px;
     border: none;
@@ -394,78 +395,14 @@ h1 {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     min-width: 80px;
 }
-
 .confirmation-button:hover {
     opacity: 0.8;
 }
-
 .confirm-cancel {
     background-color: #e8e8ed;
     color: #3e3e43;
 }
-
 .confirm-delete {
     background-color: #ff3b30;
     color: white;
-}
-
-.delete-icon {
-    display: none; /* Hidden by default */
-}
-
-@media (min-width: 768px) {
-    .delete-icon {
-        display: flex;
-        position: absolute;
-        bottom: 15px;
-        right: 15px;
-        width: 32px;
-        height: 32px;
-        background-color: #ff3b30;
-        color: white;
-        border-radius: 50%;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.2s, transform 0.2s;
-        font-size: 18px;
-        line-height: 1;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        opacity: 0; /* Initially hidden */
-        transform: scale(0.8);
-        transition: opacity 0.2s, transform 0.2s;
-    }
-
-    .entry:hover .delete-icon {
-        opacity: 1;
-        transform: scale(1);
-    }
-    
-    .delete-icon:hover {
-        background-color: #e60000;
-        transform: scale(1.1);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .entry.animate-in {
-        animation: none;
-        opacity: 1;
-        transform: none;
-        filter: none;
-    }
-}
-
-@media (max-width: 600px) {
-    .container {
-        padding: 15px;
-    }
-    
-    h1 {
-        font-size: 36px;
-    }
-    
-    .entry {
-        padding: 15px;
-    }
 }
