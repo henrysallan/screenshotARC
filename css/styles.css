@@ -205,6 +205,13 @@ h1 { font-size: 48px; font-weight: bold; margin-bottom: 20px; color: #1d1d1f; le
     .feed.database-view .entry .edit-icon {
         display: flex;
     }
+
+    .entry.edit-mode .edit-icon,
+    .entry.edit-mode .delete-icon {
+        opacity: 0 !important;
+        transform: scale(0.8) !important;
+        pointer-events: none;
+    }
 }
 
 /* --- Edit Mode Styles --- */
