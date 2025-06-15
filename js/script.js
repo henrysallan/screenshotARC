@@ -1,5 +1,5 @@
 // =================================================================
-// SCRIPT.JS - FINAL VERSION 2.3
+// SCRIPT.JS - FINAL VERSION 2.31
 // Added inline editing functionality for desktop view
 // =================================================================
 
