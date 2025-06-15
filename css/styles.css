@@ -364,3 +364,191 @@ textarea.edit-field {
 .feed.database-view .entry { border-radius: 0; box-shadow: none; border-top: 1px solid #e8e8ed; }
 .feed.database-view .entry-swipe-container { transition: none; }
 .feed.database-view .delete-background { display: none; }
+
+/* Add these styles to your existing styles.css file */
+
+/* User Menu Styles */
+.user-menu {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.user-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #e8e8ed;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-button:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-name {
+    font-size: 14px;
+    color: #1d1d1f;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    width: 280px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: all 0.2s;
+    overflow: hidden;
+}
+
+.user-dropdown.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+}
+
+.user-avatar-large {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name-large {
+    font-weight: 600;
+    color: #1d1d1f;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-email {
+    font-size: 12px;
+    color: #86868b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.divider {
+    height: 1px;
+    background: #e8e8ed;
+}
+
+.shortcut-token {
+    padding: 16px;
+}
+
+.shortcut-token label {
+    display: block;
+    font-size: 12px;
+    color: #86868b;
+    margin-bottom: 8px;
+}
+
+.token-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.token-display code {
+    flex: 1;
+    padding: 8px 12px;
+    background: #f5f5f7;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'SF Mono', Monaco, monospace;
+    color: #1d1d1f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.copy-button {
+    padding: 6px 12px;
+    background: #0071e3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.copy-button:hover {
+    background: #005bb5;
+}
+
+.copy-button.copied {
+    background: #34c759;
+}
+
+.logout-button {
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: none;
+    color: #ff3b30;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.logout-button:hover {
+    background: #fee;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+    .user-menu {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .user-button {
+        padding: 4px 8px;
+    }
+    
+    .user-name {
+        display: none;
+    }
+    
+    .user-dropdown {
+        width: 260px;
+    }
+}
