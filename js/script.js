@@ -83,14 +83,44 @@ async function loadDatabase() {
             
         allEntries = snapshot.docs.map(doc => {
             const data = doc.data();
-            const entryData = (data.data && typeof data.data === 'string') ? JSON.parse(data.data) : data;
+            let entryData;
+            
+            // Handle different data structures
+            if (data.data && typeof data.data === 'string') {
+                // Old format with stringified data
+                entryData = JSON.parse(data.data);
+            } else if (data.data && typeof data.data === 'object') {
+                // New format from shortcut - data is nested in 'data' property
+                entryData = data.data;
+            } else if (data.fields) {
+                // Firestore REST API format (if any old entries)
+                entryData = {
+                    title: data.fields.title?.stringValue || '',
+                    summary: data.fields.summary?.stringValue || '',
+                    content: data.fields.content?.stringValue || '',
+                    tags: data.fields.tags?.arrayValue?.values?.map(v => v.stringValue) || [],
+                    calendar_link: data.fields.calendar_link?.stringValue || '',
+                    address: data.fields.address?.stringValue || '',
+                    amazon_search_url: data.fields.amazon_search_url?.stringValue || '',
+                    timestamp: data.fields.timestamp?.timestampValue || data.timestamp
+                };
+            } else {
+                // Direct data format (from manual entries or migration)
+                entryData = data;
+            }
+            
+            // Debug log to see what we're getting
+            console.log('Entry data structure:', { original: data, processed: entryData });
+            
             return {
                 ...entryData,
-                firebaseTimestamp: data.timestamp || data.createdAt,
+                firebaseTimestamp: data.timestamp || data.createdAt || entryData.timestamp,
                 docId: doc.id
             };
         }).filter(entry => entry && entry.docId);
+        
         filteredEntries = [...allEntries];
+        console.log('Loaded entries:', allEntries); // Debug line
     } catch (error) {
         console.error("Database load error:", error);
         showError("Failed to load data from the database.");
