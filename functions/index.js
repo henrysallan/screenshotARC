@@ -52,11 +52,12 @@ exports.addEntry = functions.https.onRequest(async (req, res) => {
     
     // Prepare the entry data
     const entryData = {
+      id: data.id || null,
       title: data.title || 'Untitled',
       summary: data.summary || '',
       content: data.content || '',
       tags: data.tags || [],
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestamp: data.timestamp ? new Date(data.timestamp) : admin.firestore.FieldValue.serverTimestamp(),
       // Add any other fields from the shortcut
       ...(data.calendar_link && { calendar_link: data.calendar_link }),
       ...(data.address && { address: data.address }),
