@@ -107,7 +107,7 @@ async function loadUserData() {
         } else {
             // User document doesn't exist, create it
             console.error('User document not found, creating...');
-            window.location.href = '/screenshotARC/login.html';
+            window.location.href = '/screenshotARC/';
         }
     } catch (error) {
         console.error('Error loading user data:', error);
@@ -154,7 +154,7 @@ function copyToken() {
 
 function signOut() {
     auth.signOut().then(() => {
-        window.location.href = '/screenshotARC/login.html';
+        window.location.href = '/screenshotARC/';
     }).catch((error) => {
         console.error('Sign out error:', error);
         showError('Failed to sign out. Please try again.');
