@@ -95,7 +95,7 @@ async function signInWithGoogle() {
         }
         
         // Redirect to main app
-        window.location.href = '/app.html';
+        window.location.href = '/screenshotARC/app.html';
         
     } catch (error) {
         console.error('Sign in error:', error);
