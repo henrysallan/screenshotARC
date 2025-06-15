@@ -35,7 +35,7 @@ async function init() {
         const user = await checkAuth();
         if (!user) {
             // Not authenticated, redirect to login
-            window.location.href = '/login.html';
+            window.location.href = '/';
             return;
         }
         
