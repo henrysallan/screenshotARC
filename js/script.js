@@ -16,6 +16,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+let currentUserId = null;
+let currentUserData = null;
+const auth = firebase.auth();
 let allEntries = [];
 let currentView = 'masonry';
 let filteredEntries = [];
@@ -28,12 +31,31 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
     try {
+        // Check authentication first
+        const user = await checkAuth();
+        if (!user) {
+            // Not authenticated, redirect to login
+            window.location.href = '/login.html';
+            return;
+        }
+        
+        currentUserId = user.uid;
+        await loadUserData();
         setupStaticEventListeners();
         await loadAndRender();
     } catch (error) {
         showError('Failed to initialize the application.');
         console.error('Initialization error:', error);
     }
+}
+
+function checkAuth() {
+    return new Promise((resolve) => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            unsubscribe();
+            resolve(user);
+        });
+    });
 }
 
 async function loadAndRender() {
@@ -45,10 +67,20 @@ async function loadAndRender() {
     renderEntries();
 }
 
-// --- 3. DATA HANDLING (FIREBASE) ---
+// ADD THE loadDatabase FUNCTION HERE:
 async function loadDatabase() {
+    if (!currentUserId) {
+        console.error('No user ID available');
+        return;
+    }
+    
     try {
-        const snapshot = await db.collection('entries').orderBy('timestamp', 'desc').get();
+        const snapshot = await db.collection('users')
+            .doc(currentUserId)
+            .collection('entries')
+            .orderBy('timestamp', 'desc')
+            .get();
+            
         allEntries = snapshot.docs.map(doc => {
             const data = doc.data();
             const entryData = (data.data && typeof data.data === 'string') ? JSON.parse(data.data) : data;
@@ -64,6 +96,74 @@ async function loadDatabase() {
         showError("Failed to load data from the database.");
     }
 }
+
+// --- 3. DATA HANDLING (FIREBASE) ---
+async function loadUserData() {
+    try {
+        const userDoc = await db.collection('users').doc(currentUserId).get();
+        if (userDoc.exists) {
+            currentUserData = userDoc.data();
+            displayUserInfo();
+        } else {
+            // User document doesn't exist, create it
+            console.error('User document not found, creating...');
+            window.location.href = '/login.html';
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+    }
+}
+
+function displayUserInfo() {
+    const user = auth.currentUser;
+    
+    // Set user avatar
+    const avatarUrl = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=0071e3&color=fff`;
+    document.getElementById('userAvatar').src = avatarUrl;
+    document.getElementById('userAvatarLarge').src = avatarUrl;
+    
+    // Set user name and email
+    document.getElementById('userName').textContent = user.displayName || 'User';
+    document.getElementById('userNameLarge').textContent = user.displayName || 'User';
+    document.getElementById('userEmail').textContent = user.email;
+    
+    // Display shortcut token
+    if (currentUserData && currentUserData.shortcutToken) {
+        document.getElementById('tokenDisplay').textContent = currentUserData.shortcutToken;
+    }
+}
+
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.toggle('show');
+}
+
+// Copy token to clipboard
+function copyToken() {
+    const token = document.getElementById('tokenDisplay').textContent;
+    navigator.clipboard.writeText(token).then(() => {
+        const button = document.querySelector('.copy-button');
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.textContent = 'Copy';
+            button.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+function signOut() {
+    auth.signOut().then(() => {
+        window.location.href = '/login.html';
+    }).catch((error) => {
+        console.error('Sign out error:', error);
+        showError('Failed to sign out. Please try again.');
+    });
+}
+
+window.toggleUserDropdown = toggleUserDropdown;
+window.copyToken = copyToken;
+window.signOut = signOut;
 
 // --- 4. RENDERING AND LAYOUT ---
 function renderEntries() {
@@ -268,9 +368,17 @@ window.toggleDatabaseRow = toggleDatabaseRow;
 function setupStaticEventListeners() {
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
     document.getElementById('confirmCancelBtn')?.addEventListener('click', cancelDelete);
+
+      const userMenuBtn = document.getElementById('userMenuBtn');
+    userMenuBtn?.addEventListener('click', toggleUserDropdown);
+
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.view-switcher')) {
             document.getElementById('viewDropdown').classList.remove('show');
+        }
+        // Also close user dropdown when clicking outside
+        if (!e.target.closest('.user-menu')) {
+            document.getElementById('userDropdown').classList.remove('show');
         }
     });
     
@@ -370,10 +478,14 @@ function cancelDelete() {
 }
 
 async function confirmDelete() {
-    if (!entryToDelete) return;
+    if (!entryToDelete || !currentUserId) return;
     try {
-        await db.collection('entries').doc(entryToDelete).delete();
-        await loadAndRender(); // Reload all data and re-render
+        await db.collection('users')
+            .doc(currentUserId)
+            .collection('entries')
+            .doc(entryToDelete)
+            .delete();
+        await loadAndRender();
     } catch (error) {
         showError('Failed to delete the shard.');
         console.error("Delete error:", error);
@@ -462,7 +574,7 @@ async function saveChanges(docId) {
     };
 
     try {
-        await db.collection('entries').doc(docId).update(updatedData);
+        await db.collection('users').doc(currentUserId).collection('entries').doc(docId).update(updatedData);
         // Once saved, exit edit mode and refresh data
         await loadAndRender();
     } catch (error) {
