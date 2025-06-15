@@ -105,13 +105,45 @@ async function loadUserData() {
             currentUserData = userDoc.data();
             displayUserInfo();
         } else {
-            // User document doesn't exist, create it
-            console.error('User document not found, creating...');
-            window.location.href = '/screenshotARC/';
+            // User document doesn't exist, CREATE IT instead of redirecting
+            console.log('User document not found, creating...');
+            
+            // Generate a token for this user
+            const shortcutToken = generateSecureToken();
+            const user = auth.currentUser;
+            
+            // Create the user document
+            await db.collection('users').doc(currentUserId).set({
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL || null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                shortcutToken: shortcutToken,
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Load the newly created data
+            currentUserData = {
+                email: user.email,
+                displayName: user.displayName,
+                shortcutToken: shortcutToken
+            };
+            displayUserInfo();
         }
     } catch (error) {
         console.error('Error loading user data:', error);
     }
+}
+
+function generateSecureToken(length = 32) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = '';
+    const randomValues = new Uint8Array(length);
+    crypto.getRandomValues(randomValues);
+    for (let i = 0; i < length; i++) {
+        token += chars[randomValues[i] % chars.length];
+    }
+    return token;
 }
 
 function displayUserInfo() {
