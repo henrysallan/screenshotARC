@@ -122,7 +122,7 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         // User is already signed in, redirect to main app
         console.log('User already authenticated, redirecting...');
-        window.location.href = '/screenshotARC/';
+        window.location.href = '/screenshotARC/app.html';
     }
 });
 
