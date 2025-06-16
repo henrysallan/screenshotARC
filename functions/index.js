@@ -3,6 +3,7 @@ const admin = require('firebase-admin');
 const { onCall } = require("firebase-functions/v2/https");
 const axios = require("axios");
 
+
 admin.initializeApp();
 
 // --- FUNCTION 1: For your old Shortcut ---
@@ -71,7 +72,7 @@ exports.addEntry = functions.https.onRequest(async (req, res) => {
 
 
 // --- FUNCTION 2: For your new iOS App ---
-// This is now at the top level, outside of addEntry.
+// This is now at the top level, outside of addEntry. making sure to remove secrets
 exports.analyzeImage   = onCall(
     { timeoutSeconds: 300, region: "us-central1" },
     async (request) => {
