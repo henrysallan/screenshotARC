@@ -2,7 +2,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { onCall } = require("firebase-functions/v2/https");
 const axios = require("axios");
-
+const { onUserCreated } = require("firebase-functions/v2/auth"); // <-- ADD THIS LINE
 
 admin.initializeApp();
 
@@ -74,7 +74,7 @@ exports.addEntry = functions.https.onRequest(async (req, res) => {
 // --- FUNCTION 2: For your new iOS App ---
 // This is now at the top level, outside of addEntry. making sure to remove secrets
 exports.analyzeImage   = onCall(
-    { timeoutSeconds: 300, region: "us-central1" },
+    { timeoutSeconds: 300, region: "us-central1", secrets: ["CLAUDE_API_KEY"] },
     async (request) => {
         if (!request.auth) {
           throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
@@ -123,3 +123,23 @@ exports.analyzeImage   = onCall(
         }
       }
 );
+
+
+// In functions/index.js
+
+/**
+ * This function triggers automatically AFTER a new user account is created.
+ */
+exports.onUserCreate = onUserCreated(async (event) => {
+  const user = event.data; // The user data
+  console.log(`A new user was created: ${user.email} (UID: ${user.uid})`);
+
+  // Create a corresponding document in the 'users' collection
+  const userRef = admin.firestore().collection('users').doc(user.uid);
+
+  return userRef.set({
+    email: user.email,
+    displayName: user.displayName || 'Anonymous',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+});
